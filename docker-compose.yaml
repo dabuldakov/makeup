@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: video-streaming-postgres
+    environment:
+      POSTGRES_DB: video_streaming
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - video-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: video-streaming-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - video-network
+
+  app:
+    build: .
+    container_name: video-streaming-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://postgres:5432/video_streaming
+      DATABASE_USERNAME: admin
+      DATABASE_PASSWORD: admin123
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: videos
+      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    depends_on:
+      - postgres
+      - minio
+    networks:
+      - video-network
+
+networks:
+  video-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
