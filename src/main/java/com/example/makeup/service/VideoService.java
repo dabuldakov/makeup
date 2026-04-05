@@ -92,7 +92,7 @@ public class VideoService {
                             .method(io.minio.http.Method.GET)
                             .bucket(bucketName)
                             .object(fileName)
-                            .expiry(24 * 60 * 60) // 24 hours
+                            .expiry(15 * 60) // 15 minutes
                             .build()
             );
         } catch (Exception e) {

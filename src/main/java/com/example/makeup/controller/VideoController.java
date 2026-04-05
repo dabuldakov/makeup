@@ -14,6 +14,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/videos")
 @RequiredArgsConstructor
@@ -33,8 +35,10 @@ public class VideoController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Video>> getAllVideos(Pageable pageable) {
-        return ResponseEntity.ok(videoService.getAllVideos(pageable));
+    public ResponseEntity<List<VideoResponse>> getAllVideos(Pageable pageable) {
+        Page<Video> allVideos = videoService.getAllVideos(pageable);
+        List<VideoResponse> responses = allVideos.get().map(this::mapToResponse).toList();
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/{id}")

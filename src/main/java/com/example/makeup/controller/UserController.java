@@ -1,5 +1,6 @@
 package com.example.makeup.controller;
 
+import com.example.makeup.dto.response.UserResponse;
 import com.example.makeup.entity.User;
 import com.example.makeup.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -15,12 +16,21 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser(Authentication authentication) {
-        return ResponseEntity.ok(userService.getUserByUsername(authentication.getName()));
+    public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
+        return ResponseEntity.ok(toResponseDto(userService.getUserByUsername(authentication.getName())));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
-        return ResponseEntity.ok(userService.updateUser(id, user));
+    public ResponseEntity<Object> updateUser(@PathVariable Long id, @RequestBody User user) {
+        userService.updateUser(id, user);
+        return ResponseEntity.ok().build();
+    }
+
+    private UserResponse toResponseDto(User user) {
+        return UserResponse.builder()
+                .userName(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
     }
 }
