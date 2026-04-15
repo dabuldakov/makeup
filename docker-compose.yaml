@@ -3,7 +3,6 @@ version: '3.8'
 services:
   postgres:
     image: postgres:17
-    container_name: muzea-postgres
     environment:
       POSTGRES_DB: ${DATABASE_DB}
       POSTGRES_USER: ${DATABASE_USERNAME}
@@ -15,11 +14,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - muzea-network
+      - makeup-network
 
   minio:
     image: minio/minio:latest
-    container_name: muzea-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -32,11 +30,10 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      - muzea-network
+      - makeup-network
 
   app:
     build: .
-    container_name: muzea-app
     ports:
       - "8080:8080"
     environment:
@@ -49,16 +46,17 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET}
       JWT_SECRET: ${JWT_SECRET}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     env_file:
       - .env
     depends_on:
       - postgres
       - minio
     networks:
-      - muzea-network
+      - makeup-network
 
 networks:
-  muzea-network:
+  makeup-network:
     driver: bridge
 
 volumes:
