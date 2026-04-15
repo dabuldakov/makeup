@@ -60,6 +60,7 @@ public class VideoService {
                     .contentType(file.getContentType())
                     .fileSize(file.getSize())
                     .uploadedBy(user)
+                    .views(0)
                     .build();
 
             return videoRepository.save(video);
