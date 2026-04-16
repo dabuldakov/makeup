@@ -24,6 +24,7 @@ public class VideoService {
 
     private final VideoRepository videoRepository;
     private final MinioClient minioClient;
+    private final MinioClient minioClientForPresignedUrls;
     private final UserService userService;
 
     @Value("${minio.bucket}")
@@ -88,7 +89,7 @@ public class VideoService {
 
     public String getVideoUrl(String fileName) {
         try {
-            return minioClient.getPresignedObjectUrl(
+            return minioClientForPresignedUrls.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(io.minio.http.Method.GET)
                             .bucket(bucketName)

@@ -18,6 +18,8 @@ minio:
   access-key: minioadmin
   secret-key: minioadmin
   bucket: videos
+  external:
+    url: http://localhost:9000
 
 logging:
   level:

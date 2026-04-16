@@ -1,14 +1,11 @@
 # Build stage
-FROM gradle:8.5-jdk21 AS build
+FROM gradle:9.4-jdk21 AS build
 
 WORKDIR /app
 # Копируем весь проект
 COPY . .
 
-# Даем права на выполнение gradlew (если используете wrapper)
-RUN chmod +x gradlew
-# Собираем проект
-RUN ./gradlew build --no-daemon
+RUN gradle build --no-daemon
 
 # Runtime stage
 FROM amazoncorretto:21-alpine
