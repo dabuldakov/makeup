@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "minio")
 public class MinioConfig {
     private String url;
+    private String externalUrl;
     private String accessKey;
     private String secretKey;
     private String bucket;
@@ -19,6 +20,14 @@ public class MinioConfig {
     public MinioClient minioClient() {
         return MinioClient.builder()
                 .endpoint(url)
+                .credentials(accessKey, secretKey)
+                .build();
+    }
+
+    @Bean
+    public MinioClient minioClientForPresignedUrls() {
+        return MinioClient.builder()
+                .endpoint(externalUrl)
                 .credentials(accessKey, secretKey)
                 .build();
     }
