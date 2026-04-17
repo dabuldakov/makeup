@@ -42,6 +42,7 @@ services:
       DATABASE_USERNAME: ${POSTGRES_USERNAME}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       MINIO_URL: ${MINIO_URL}
+      MINIO_EXTERNAL_URL: ${MINIO_EXTERNAL_URL}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET}
@@ -54,6 +55,8 @@ services:
       - minio
     networks:
       - makeup-network
+    extra_hosts:
+      - "90.188.89.63:host-gateway"
 
 networks:
   makeup-network:
