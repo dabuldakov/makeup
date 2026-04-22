@@ -3,6 +3,8 @@ package com.example.makeup.dto.response;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 public class NewsResponse {
@@ -12,5 +14,5 @@ public class NewsResponse {
     private String imageUrl;
     private VideoResponse relatedVideo;
     private String author;
-    private String publishedAt;
+    private LocalDateTime publishedAt;
 }

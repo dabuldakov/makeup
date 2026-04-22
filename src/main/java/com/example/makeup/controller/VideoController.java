@@ -37,7 +37,7 @@ public class VideoController {
     @GetMapping
     public ResponseEntity<List<VideoResponse>> getAllVideos(Pageable pageable) {
         Page<Video> allVideos = videoService.getAllVideos(pageable);
-        List<VideoResponse> responses = allVideos.get().map(this::mapToResponse).toList();
+        List<VideoResponse> responses = allVideos.get().map(VideoController::mapToResponse).toList();
         return ResponseEntity.ok(responses);
     }
 
@@ -62,7 +62,7 @@ public class VideoController {
         return ResponseEntity.ok(videoService.getVideoUrl(fileName));
     }
 
-    private VideoResponse mapToResponse(Video video) {
+    public static VideoResponse mapToResponse(Video video) {
         return VideoResponse.builder()
                 .id(video.getId())
                 .title(video.getTitle())
