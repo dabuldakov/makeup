@@ -38,7 +38,7 @@ public class Video {
 
     private String duration;
 
-    private String thumbnailUrl;
+    private String thumbnailPath;
 
     private Integer views = 0;
 

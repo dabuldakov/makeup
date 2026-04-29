@@ -3,18 +3,15 @@ package com.example.makeup.service;
 import com.example.makeup.entity.Video;
 import com.example.makeup.entity.User;
 import com.example.makeup.repository.VideoRepository;
-import io.minio.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
+import java.awt.image.BufferedImage;
 import java.util.UUID;
 
 @Service
@@ -23,88 +20,73 @@ import java.util.UUID;
 public class VideoService {
 
     private final VideoRepository videoRepository;
-    private final MinioClient minioClient;
-    private final MinioClient minioClientForPresignedUrls;
+    private final MinioService minioService;
     private final UserService userService;
-
-    @Value("${minio.bucket}")
-    private String bucketName;
+    private final ThumbnailGeneratorService thumbnailGeneratorService;
 
     public Video uploadVideo(MultipartFile file, String title, String description, String username) {
         try {
             User user = userService.getUserByUsername(username);
 
-            // Generate unique filename
-            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            // Загружаем видео в MinIO
+            String fileId = UUID.randomUUID().toString();
 
-            // Upload to MinIO
-            boolean bucketExists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
-            if (!bucketExists) {
-                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-            }
+            String fileName = minioService.uploadVideo(file, fileId);
 
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(fileName)
-                            .stream(file.getInputStream(), file.getSize(), -1)
-                            .contentType(file.getContentType())
-                            .build()
-            );
-
-            // Save metadata
+            // Сохраняем метаданные
             Video video = Video.builder()
                     .title(title)
                     .description(description)
                     .fileName(fileName)
-                    .filePath(bucketName + "/" + fileName)
+                    .filePath("videos" + "/" + fileName)
                     .contentType(file.getContentType())
                     .fileSize(file.getSize())
                     .uploadedBy(user)
                     .views(0)
                     .build();
 
-            return videoRepository.save(video);
+            Video savedVideo = videoRepository.save(video);
+
+            // Генерируем и загружаем превью
+            try {
+                BufferedImage thumbnail = thumbnailGeneratorService.generateThumbnail(file);
+                String thumbnailName = minioService.uploadThumbnail(thumbnail, fileId);
+                savedVideo.setThumbnailPath("thumbnails/" + thumbnailName);
+                return videoRepository.save(savedVideo);
+            } catch (Exception e) {
+                log.warn("Failed to generate thumbnail for video {}: {}", savedVideo.getId(), e.getMessage());
+                return savedVideo;
+            }
 
         } catch (Exception e) {
-            log.error("Failed to upload video: {}", e.getMessage());
+            log.error("Failed to upload video: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload video", e);
         }
     }
 
     public Resource getVideoFile(String fileName) {
-        try {
-            InputStream stream = minioClient.getObject(
-                    GetObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(fileName)
-                            .build()
-            );
-            return new InputStreamResource(stream);
-        } catch (Exception e) {
-            log.error("Failed to get video file: {}", e.getMessage());
-            throw new RuntimeException("Video not found", e);
-        }
+        return minioService.getVideoFile(fileName);
     }
 
     public String getVideoUrl(String fileName) {
-        try {
-            return minioClientForPresignedUrls.getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .method(io.minio.http.Method.GET)
-                            .bucket(bucketName)
-                            .object(fileName)
-                            .expiry(15 * 60) // 15 minutes
-                            .build()
-            );
-        } catch (Exception e) {
-            log.error("Failed to generate presigned URL: {}", e.getMessage());
-            throw new RuntimeException("Failed to generate video URL", e);
-        }
+        return minioService.getVideoPresignedUrl(fileName);
+    }
+
+    public String getThumbnailUrl(String fileName) {
+        return minioService.getThumbnailPresignedUrl(fileName);
+    }
+
+    public byte[] getThumbnailBytes(String fileName) {
+        return minioService.getThumbnailBytes(fileName);
     }
 
     public Page<Video> getAllVideos(Pageable pageable) {
-        return videoRepository.findAll(pageable);
+        Page<Video> videos = videoRepository.findAll(pageable);
+        videos.forEach(video -> {
+            video.setFilePath(video.getFilePath());
+            video.setThumbnailPath(video.getThumbnailPath());
+        });
+        return videos;
     }
 
     public Video getVideoById(Long id) {

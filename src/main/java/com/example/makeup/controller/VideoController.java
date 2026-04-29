@@ -2,6 +2,7 @@ package com.example.makeup.controller;
 
 import com.example.makeup.dto.response.VideoResponse;
 import com.example.makeup.entity.Video;
+import com.example.makeup.service.MinioService;
 import com.example.makeup.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -57,6 +58,20 @@ public class VideoController {
                 .body(resource);
     }
 
+    @GetMapping("/thumbnail/{fileName}")
+    public ResponseEntity<byte[]> getVideoThumbnail(@PathVariable String fileName) {
+        byte[] thumbnailBytes = videoService.getThumbnailBytes(fileName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .body(thumbnailBytes);
+    }
+
+    @GetMapping("/thumbnail/url/{fileName}")
+    public ResponseEntity<String> getVideoThumbnailUrl(@PathVariable String fileName) {
+        var url = videoService.getThumbnailUrl(fileName);
+        return ResponseEntity.ok(url);
+    }
+
     @GetMapping("/url/{fileName}")
     public ResponseEntity<String> getVideoUrl(@PathVariable String fileName) {
         return ResponseEntity.ok(videoService.getVideoUrl(fileName));
@@ -67,7 +82,8 @@ public class VideoController {
                 .id(video.getId())
                 .title(video.getTitle())
                 .description(video.getDescription())
-                .url("/api/videos/stream/" + video.getFileName())
+                .url("/api/videos/stream/" + video.getFileName() + MinioService.getExtensionFromContentType(video.getContentType()))
+                .thumbnailUrl("/api/videos/thumbnail/" + video.getFileName() + ".jpeg")
                 .fileSize(video.getFileSize())
                 .views(video.getViews())
                 .likes(video.getLikes())
