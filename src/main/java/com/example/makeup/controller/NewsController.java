@@ -1,5 +1,6 @@
 package com.example.makeup.controller;
 
+import com.example.makeup.dto.response.NewsCreateResponse;
 import com.example.makeup.dto.response.NewsResponse;
 import com.example.makeup.entity.NewsItem;
 import com.example.makeup.service.NewsService;
@@ -30,7 +31,7 @@ public class NewsController {
     }
 
     @PostMapping
-    public ResponseEntity<Long> createNews(
+    public ResponseEntity<NewsCreateResponse> createNews(
             @RequestParam String title,
             @RequestParam String content,
             @RequestParam(required = false) Long videoId,
@@ -38,7 +39,7 @@ public class NewsController {
             Authentication authentication
     ) {
         var response = newsService.createNews(title, content, videoId, authentication.getName(), image);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(NewsCreateResponse.builder().id(response).build());
     }
 
     @GetMapping("/image/{fileName}")
