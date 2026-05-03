@@ -1,5 +1,6 @@
 package com.example.makeup.service;
 
+import com.example.makeup.config.BucketType;
 import com.example.makeup.entity.Video;
 import com.example.makeup.entity.User;
 import com.example.makeup.repository.VideoRepository;
@@ -50,8 +51,8 @@ public class VideoService {
             // Генерируем и загружаем превью
             try {
                 BufferedImage thumbnail = thumbnailGeneratorService.generateThumbnail(file);
-                String thumbnailName = minioService.uploadThumbnail(thumbnail, fileId);
-                savedVideo.setThumbnailPath("thumbnails/" + thumbnailName);
+                String thumbnailPAth = minioService.uploadThumbnail(thumbnail, fileId);
+                savedVideo.setThumbnailPath("thumbnails/" + thumbnailPAth);
                 return videoRepository.save(savedVideo);
             } catch (Exception e) {
                 log.warn("Failed to generate thumbnail for video {}: {}", savedVideo.getId(), e.getMessage());
@@ -77,7 +78,7 @@ public class VideoService {
     }
 
     public byte[] getThumbnailBytes(String fileName) {
-        return minioService.getThumbnailBytes(fileName);
+        return minioService.getImageBytes(fileName, BucketType.THUMBNAILS);
     }
 
     public Page<Video> getAllVideos(Pageable pageable) {

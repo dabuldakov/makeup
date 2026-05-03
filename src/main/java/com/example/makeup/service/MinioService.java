@@ -1,5 +1,6 @@
 package com.example.makeup.service;
 
+import com.example.makeup.config.BucketType;
 import io.minio.*;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
@@ -16,7 +17,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.UUID;
 import javax.imageio.ImageIO;
 
 @Service
@@ -28,46 +28,34 @@ public class MinioService {
     private final MinioClient minioClientForPresignedUrls;
 
     @Value("${minio.bucket}")
-    private String bucketName;
+    private String videoBucketName;
 
     @Value("${minio.thumbnail-bucket}")
     private String thumbnailBucketName;
 
+    @Value("${minio.news-image}")
+    private String newsImageBucketName;
+
     @PostConstruct
     public void init() {
-        createBucketIfNotExists();
-        createThumbnailBucketIfNotExists();
-    }
-
-    private void createBucketIfNotExists() {
-        try {
-            boolean exists = minioClient.bucketExists(
-                    BucketExistsArgs.builder().bucket(bucketName).build()
-            );
-            if (!exists) {
-                minioClient.makeBucket(
-                        MakeBucketArgs.builder().bucket(bucketName).build()
-                );
-                log.info("Bucket created: {}", bucketName);
-            }
-        } catch (Exception e) {
-            log.error("Failed to create bucket: {}", e.getMessage(), e);
+        for (BucketType bucketType : BucketType.values()) {
+            createBucket(bucketType);
         }
     }
 
-    private void createThumbnailBucketIfNotExists() {
+    private void createBucket(BucketType bucketType) {
         try {
             boolean exists = minioClient.bucketExists(
-                    BucketExistsArgs.builder().bucket(thumbnailBucketName).build()
+                    BucketExistsArgs.builder().bucket(bucketType.getBucketName()).build()
             );
             if (!exists) {
                 minioClient.makeBucket(
-                        MakeBucketArgs.builder().bucket(thumbnailBucketName).build()
+                        MakeBucketArgs.builder().bucket(bucketType.getBucketName()).build()
                 );
-                log.info("Thumbnail bucket created: {}", thumbnailBucketName);
+                log.info("{} created: {}", bucketType.getDescription(), bucketType.getBucketName());
             }
         } catch (Exception e) {
-            log.error("Failed to create thumbnail bucket: {}", e.getMessage(), e);
+            log.error("Failed to create {}: {}", bucketType.getDescription().toLowerCase(), e.getMessage(), e);
         }
     }
 
@@ -79,7 +67,7 @@ public class MinioService {
 
             minioClient.putObject(
                     PutObjectArgs.builder()
-                            .bucket(bucketName)
+                            .bucket(videoBucketName)
                             .object(fileId + getExtensionFromContentType(file.getContentType()))
                             .stream(file.getInputStream(), file.getSize(), -1)
                             .contentType(file.getContentType())
@@ -94,29 +82,57 @@ public class MinioService {
         }
     }
 
+    public String uploadThumbnail(BufferedImage image, String fileId) {
+        return uploadImage(image, fileId, BucketType.THUMBNAILS);
+    }
+
+    /**
+     * Загрузка изображения для новости в MinIO
+     */
+    public String uploadNewsImage(MultipartFile file, String fileId) {
+        try {
+            String fileName = fileId + ".jpeg";
+
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(newsImageBucketName)
+                            .object(fileName)
+                            .stream(file.getInputStream(), file.getSize(), -1)
+                            .contentType(file.getContentType())
+                            .build()
+            );
+
+            log.info("News image uploaded: {}", fileName);
+            return fileName;
+        } catch (Exception e) {
+            log.error("Failed to upload news image: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload news image", e);
+        }
+    }
+
     /**
      * Загрузка превью видео в MinIO
      */
-    public String uploadThumbnail(BufferedImage thumbnail, String fileId) {
+    private String uploadImage(BufferedImage image, String fileId, BucketType bucketType) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(thumbnail, "jpg", baos);
+            ImageIO.write(image, "jpg", baos);
             byte[] thumbnailBytes = baos.toByteArray();
 
             minioClient.putObject(
                     PutObjectArgs.builder()
-                            .bucket(thumbnailBucketName)
+                            .bucket(bucketType.getBucketName())
                             .object(fileId + ".jpeg")
                             .stream(new ByteArrayInputStream(thumbnailBytes), thumbnailBytes.length, -1)
                             .contentType("image/jpeg")
                             .build()
             );
 
-            log.info("Thumbnail uploaded: {}", fileId);
+            log.info("Image uploaded: {}", fileId);
             return fileId;
         } catch (Exception e) {
-            log.error("Failed to upload thumbnail: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to upload thumbnail", e);
+            log.error("Failed to upload image: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload image", e);
         }
     }
 
@@ -127,7 +143,7 @@ public class MinioService {
         try {
             InputStream stream = minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(bucketName)
+                            .bucket(videoBucketName)
                             .object(fileName)
                             .build()
             );
@@ -159,12 +175,12 @@ public class MinioService {
     /**
      * Получение превью как байтовый массив
      */
-    public byte[] getThumbnailBytes(String thumbnailName) {
+    public byte[] getImageBytes(String imageName, BucketType bucketType) {
         try {
             InputStream stream = minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(thumbnailBucketName)
-                            .object(thumbnailName)
+                            .bucket(bucketType.getBucketName())
+                            .object(imageName)
                             .build()
             );
             return stream.readAllBytes();
@@ -182,7 +198,7 @@ public class MinioService {
             return minioClientForPresignedUrls.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
-                            .bucket(bucketName)
+                            .bucket(videoBucketName)
                             .object(fileName)
                             .expiry(15 * 60) // 15 minutes
                             .build()
@@ -219,7 +235,7 @@ public class MinioService {
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
-                            .bucket(bucketName)
+                            .bucket(videoBucketName)
                             .object(fileName)
                             .build()
             );

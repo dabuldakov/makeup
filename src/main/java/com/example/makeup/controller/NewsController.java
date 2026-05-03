@@ -6,9 +6,11 @@ import com.example.makeup.service.NewsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/news")
@@ -28,21 +30,32 @@ public class NewsController {
     }
 
     @PostMapping
-    public ResponseEntity<NewsResponse> createNews(
+    public ResponseEntity<Long> createNews(
             @RequestParam String title,
             @RequestParam String content,
             @RequestParam(required = false) Long videoId,
+            @RequestParam(required = false) MultipartFile image,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(toDto(newsService.createNews(title, content, videoId, authentication.getName())));
+        var response = newsService.createNews(title, content, videoId, authentication.getName(), image);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/image/{fileName}")
+    public ResponseEntity<byte[]> getImage(@PathVariable String fileName) {
+        byte[] bytes = newsService.getImage(fileName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .body(bytes);
     }
 
     public NewsResponse toDto(NewsItem newsItem) {
+
         return NewsResponse.builder()
                 .id(newsItem.getId())
                 .title(newsItem.getTitle())
                 .content(newsItem.getContent())
-                .imageUrl(newsItem.getImageUrl())
+                .imageUrl(newsItem.getImageUrl() != null ? "/api/news/image/" + newsItem.getImageUrl() : null)
                 .relatedVideo(VideoController.mapToResponse(newsItem.getRelatedVideo()))
                 .publishedAt(newsItem.getPublishedAt())
                 .author(newsItem.getAuthor().getUsername())
