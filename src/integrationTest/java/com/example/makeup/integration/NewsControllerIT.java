@@ -2,11 +2,11 @@ package com.example.makeup.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -91,5 +91,48 @@ class NewsControllerIT extends AbstractIntegrationTest {
     void getNewsWithoutTokenReturnsForbidden() throws Exception {
         mockMvc.perform(get("/api/news/1"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteNewsWithoutTokenReturnsForbidden() throws Exception {
+        mockMvc.perform(delete("/api/news/1"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void authorCanDeleteOwnNews() throws Exception {
+        String token = registerUser("author-del");
+        long id = createNews(token, "Delete me");
+
+        mockMvc.perform(delete("/api/news/" + id).header("Authorization", BEARER + token))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/news").header("Authorization", BEARER + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(0)));
+    }
+
+    @Test
+    void nonAuthorCannotDeleteNews() throws Exception {
+        String authorToken = registerUser("author-keep");
+        String otherToken = registerUser("intruder");
+        long id = createNews(authorToken, "Keep me");
+
+        mockMvc.perform(delete("/api/news/" + id).header("Authorization", BEARER + otherToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/news").header("Authorization", BEARER + authorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)));
+    }
+
+    private long createNews(String token, String title) throws Exception {
+        String idJson = mockMvc.perform(multipart("/api/news")
+                        .param("title", title)
+                        .param("content", "Content")
+                        .header("Authorization", BEARER + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(idJson).get("id").asLong();
     }
 }

@@ -44,6 +44,12 @@ public class NewsController {
         return ResponseEntity.ok(NewsCreateResponse.builder().id(response).build());
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNews(@PathVariable Long id, Authentication authentication) {
+        newsService.deleteNews(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/image/{fileName}")
     public ResponseEntity<byte[]> getImage(@PathVariable String fileName) {
         byte[] bytes = newsService.getImage(fileName);

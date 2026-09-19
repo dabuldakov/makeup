@@ -262,6 +262,23 @@ public class MinioService {
         }
     }
 
+    /**
+     * Удаление изображения новости из MinIO
+     */
+    public void deleteNewsImage(String fileName) {
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(newsImageBucketName)
+                            .object(fileName)
+                            .build()
+            );
+            log.info("News image deleted: {}", fileName);
+        } catch (Exception e) {
+            log.error("Failed to delete news image: {}", e.getMessage(), e);
+        }
+    }
+
     private static final Map<String, String> MIME_TO_EXTENSION = Map.of(
             "video/mp4", ".mp4",
             "video/mpeg", ".mpeg",

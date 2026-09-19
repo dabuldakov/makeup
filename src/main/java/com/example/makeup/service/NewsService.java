@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,6 +47,19 @@ public class NewsService {
         uploadImage(image, savedNews);
 
         return savedNews.getId();
+    }
+
+    public void deleteNews(Long id, String username) {
+        NewsItem news = getNewsById(id);
+        if (news.getAuthor() == null || !username.equals(news.getAuthor().getUsername())) {
+            throw new AccessDeniedException("Only the author can delete this news");
+        }
+
+        if (news.getImageUrl() != null) {
+            minioService.deleteNewsImage(news.getImageUrl());
+        }
+
+        newsRepository.delete(news);
     }
 
     public byte[] getImage(String fileName) {

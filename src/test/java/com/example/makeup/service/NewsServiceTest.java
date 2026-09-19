@@ -113,6 +113,43 @@ class NewsServiceTest {
     }
 
     @Test
+    void deleteNews_shouldDeleteOwnNewsAndItsImage() {
+        NewsItem news = NewsItem.builder().id(7L).imageUrl("img-uuid")
+                .author(User.builder().id(1L).username("alice").build()).build();
+        when(newsRepository.findById(7L)).thenReturn(Optional.of(news));
+
+        newsService.deleteNews(7L, "alice");
+
+        verify(minioService).deleteNewsImage("img-uuid");
+        verify(newsRepository).delete(news);
+    }
+
+    @Test
+    void deleteNews_shouldRejectNonAuthor() {
+        NewsItem news = NewsItem.builder().id(7L).imageUrl("img-uuid")
+                .author(User.builder().id(1L).username("alice").build()).build();
+        when(newsRepository.findById(7L)).thenReturn(Optional.of(news));
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> newsService.deleteNews(7L, "bob"));
+
+        verify(newsRepository, never()).delete(any(NewsItem.class));
+        verify(minioService, never()).deleteNewsImage(anyString());
+    }
+
+    @Test
+    void deleteNews_shouldSkipImageWhenAbsent() {
+        NewsItem news = NewsItem.builder().id(7L)
+                .author(User.builder().id(1L).username("alice").build()).build();
+        when(newsRepository.findById(7L)).thenReturn(Optional.of(news));
+
+        newsService.deleteNews(7L, "alice");
+
+        verify(minioService, never()).deleteNewsImage(anyString());
+        verify(newsRepository).delete(news);
+    }
+
+    @Test
     void getImage_shouldDelegateToMinio() {
         when(minioService.getImageBytes("img.jpg", com.example.makeup.config.BucketType.NEWS_IMAGE))
                 .thenReturn(new byte[]{1, 2, 3});
