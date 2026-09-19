@@ -1,8 +1,8 @@
 package com.example.makeup.controller;
 
+import com.example.makeup.dto.mapper.VideoMapper;
 import com.example.makeup.dto.response.VideoResponse;
 import com.example.makeup.entity.Video;
-import com.example.makeup.service.MinioService;
 import com.example.makeup.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -23,6 +23,7 @@ import java.util.List;
 public class VideoController {
 
     private final VideoService videoService;
+    private final VideoMapper videoMapper;
 
     @PostMapping("/upload")
     public ResponseEntity<VideoResponse> uploadVideo(
@@ -32,13 +33,13 @@ public class VideoController {
             Authentication authentication
     ) {
         Video video = videoService.uploadVideo(file, title, description, authentication.getName());
-        return ResponseEntity.ok(mapToResponse(video));
+        return ResponseEntity.ok(videoMapper.toResponse(video));
     }
 
     @GetMapping
     public ResponseEntity<List<VideoResponse>> getAllVideos(Pageable pageable) {
         Page<Video> allVideos = videoService.getAllVideos(pageable);
-        List<VideoResponse> responses = allVideos.get().map(VideoController::mapToResponse).toList();
+        List<VideoResponse> responses = allVideos.get().map(videoMapper::toResponse).toList();
         return ResponseEntity.ok(responses);
     }
 
@@ -46,7 +47,7 @@ public class VideoController {
     public ResponseEntity<VideoResponse> getVideo(@PathVariable Long id) {
         Video video = videoService.getVideoById(id);
         videoService.incrementViews(id);
-        return ResponseEntity.ok(mapToResponse(video));
+        return ResponseEntity.ok(videoMapper.toResponse(video));
     }
 
     @GetMapping("/stream/{fileName}")
@@ -75,20 +76,5 @@ public class VideoController {
     @GetMapping("/url/{fileName}")
     public ResponseEntity<String> getVideoUrl(@PathVariable String fileName) {
         return ResponseEntity.ok(videoService.getVideoUrl(fileName));
-    }
-
-    public static VideoResponse mapToResponse(Video video) {
-        return VideoResponse.builder()
-                .id(video.getId())
-                .title(video.getTitle())
-                .description(video.getDescription())
-                .url("/api/videos/stream/" + video.getFileName() + MinioService.getExtensionFromContentType(video.getContentType()))
-                .thumbnailUrl("/api/videos/thumbnail/" + video.getFileName() + ".jpeg")
-                .fileSize(video.getFileSize())
-                .views(video.getViews())
-                .likes(video.getLikes())
-                .uploadedBy(video.getUploadedBy().getUsername())
-                .uploadedAt(video.getUploadedAt().toString())
-                .build();
     }
 }

@@ -1,0 +1,21 @@
+spring:
+  # Критичные настройки (datasource, flyway, ddl-auto) задаются через
+  # @DynamicPropertySource в AbstractIntegrationTest, чтобы гарантированно
+  # перекрыть значение spring.profiles.active=dev из application.yaml.
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+# Настройки MinIO: сервис замокан в тестах, клиенты не выполняют реальных
+# запросов, но бинам нужны не-null значения свойств.
+minio:
+  url: http://localhost:9000
+  externalUrl: http://localhost:9000
+  access-key: test
+  secret-key: test123
+  bucket: videos
+  thumbnail-bucket: thumbnails
+  news-image: news-image

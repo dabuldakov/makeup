@@ -1,8 +1,8 @@
 package com.example.makeup.controller;
 
+import com.example.makeup.dto.mapper.NewsMapper;
 import com.example.makeup.dto.response.NewsCreateResponse;
 import com.example.makeup.dto.response.NewsResponse;
-import com.example.makeup.entity.NewsItem;
 import com.example.makeup.service.NewsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,15 +19,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class NewsController {
 
     private final NewsService newsService;
+    private final NewsMapper newsMapper;
 
     @GetMapping
     public ResponseEntity<Page<NewsResponse>> getAllNews(Pageable pageable) {
-        return ResponseEntity.ok(newsService.getAllNews(pageable).map(this::toDto));
+        Page<NewsResponse> response = newsService.getAllNews(pageable).map(newsMapper::toResponse);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<NewsResponse> getNewsById(@PathVariable Long id) {
-        return ResponseEntity.ok(toDto(newsService.getNewsById(id)));
+        return ResponseEntity.ok(newsMapper.toResponse(newsService.getNewsById(id)));
     }
 
     @PostMapping
@@ -48,18 +50,5 @@ public class NewsController {
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
                 .body(bytes);
-    }
-
-    public NewsResponse toDto(NewsItem newsItem) {
-
-        return NewsResponse.builder()
-                .id(newsItem.getId())
-                .title(newsItem.getTitle())
-                .content(newsItem.getContent())
-                .imageUrl(newsItem.getImageUrl() != null ? "/api/news/image/" + newsItem.getImageUrl() : null)
-                .relatedVideo(VideoController.mapToResponse(newsItem.getRelatedVideo()))
-                .publishedAt(newsItem.getPublishedAt())
-                .author(newsItem.getAuthor().getUsername())
-                .build();
     }
 }

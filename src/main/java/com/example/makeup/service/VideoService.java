@@ -82,12 +82,7 @@ public class VideoService {
     }
 
     public Page<Video> getAllVideos(Pageable pageable) {
-        Page<Video> videos = videoRepository.findAll(pageable);
-        videos.forEach(video -> {
-            video.setFilePath(video.getFilePath());
-            video.setThumbnailPath(video.getThumbnailPath());
-        });
-        return videos;
+        return videoRepository.findAll(pageable);
     }
 
     public Video getVideoById(Long id) {
