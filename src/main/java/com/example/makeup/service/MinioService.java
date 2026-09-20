@@ -29,6 +29,12 @@ public class MinioService {
     private final MinioClient minioClient;
     private final MinioClient minioClientForPresignedUrls;
 
+    /**
+     * Регион задаётся явно, чтобы клиент не делал сетевой GetBucketLocation
+     * (иначе при недоступном внешнем MinIO генерация URL подвисает).
+     */
+    private static final String PRESIGNED_REGION = "us-east-1";
+
     @Value("${minio.bucket}")
     private String videoBucketName;
 
@@ -259,6 +265,7 @@ public class MinioService {
                             .method(Method.GET)
                             .bucket(videoBucketName)
                             .object(fileName)
+                            .region(PRESIGNED_REGION)
                             .expiry(15 * 60) // 15 minutes
                             .build()
             );
@@ -278,6 +285,7 @@ public class MinioService {
                             .method(Method.GET)
                             .bucket(thumbnailBucketName)
                             .object(thumbnailName)
+                            .region(PRESIGNED_REGION)
                             .expiry(60 * 60) // 1 hour for thumbnails
                             .build()
             );
