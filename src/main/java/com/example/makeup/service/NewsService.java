@@ -2,6 +2,7 @@ package com.example.makeup.service;
 
 import com.example.makeup.config.BucketType;
 import com.example.makeup.entity.NewsItem;
+import com.example.makeup.exception.NotFoundException;
 import com.example.makeup.repository.NewsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,7 @@ public class NewsService {
 
     public NewsItem getNewsById(Long id) {
         return newsRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("News not found"));
+                .orElseThrow(() -> new NotFoundException("News not found"));
     }
 
     public Long createNews(String title, String content, Long videoId, String username, MultipartFile image) {

@@ -1,7 +1,6 @@
 package com.example.makeup.controller;
 
 import com.example.makeup.dto.mapper.NewsMapper;
-import com.example.makeup.dto.response.NewsCreateResponse;
 import com.example.makeup.dto.response.NewsResponse;
 import com.example.makeup.service.NewsService;
 import lombok.RequiredArgsConstructor;
@@ -33,15 +32,15 @@ public class NewsController {
     }
 
     @PostMapping
-    public ResponseEntity<NewsCreateResponse> createNews(
+    public ResponseEntity<NewsResponse> createNews(
             @RequestParam String title,
             @RequestParam String content,
             @RequestParam(required = false) Long videoId,
             @RequestParam(required = false) MultipartFile image,
             Authentication authentication
     ) {
-        var response = newsService.createNews(title, content, videoId, authentication.getName(), image);
-        return ResponseEntity.ok(NewsCreateResponse.builder().id(response).build());
+        Long id = newsService.createNews(title, content, videoId, authentication.getName(), image);
+        return ResponseEntity.ok(newsMapper.toResponse(newsService.getNewsById(id)));
     }
 
     @DeleteMapping("/{id}")

@@ -3,13 +3,18 @@ package com.example.makeup.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
+import lombok.Setter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"relatedVideo", "author"})
+@EqualsAndHashCode(of = "id")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -37,7 +42,6 @@ public class NewsItem {
     @JoinColumn(name = "author_id")
     private User author;
 
-    @CreatedDate
     private LocalDateTime publishedAt;
 
     private boolean isPublished = true;

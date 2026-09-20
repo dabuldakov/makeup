@@ -13,6 +13,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+jwt:
+  secret: ${JWT_SECRET:dev-only-secret-key-change-me-1234567890-abcdef}
+
 minio:
   url: http://localhost:9000
   access-key: minioadmin

@@ -64,18 +64,28 @@ public class MinioService {
      */
     public String uploadVideo(MultipartFile file, String fileId) {
         try {
+            return uploadVideo(file.getInputStream(), file.getSize(), file.getContentType(), fileId);
+        } catch (Exception e) {
+            log.error("Failed to upload video: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload video", e);
+        }
+    }
+
+    public String uploadVideo(InputStream stream, long size, String contentType, String fileId) {
+        try {
+            String objectName = fileId + getExtensionFromContentType(contentType);
 
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(videoBucketName)
-                            .object(fileId + getExtensionFromContentType(file.getContentType()))
-                            .stream(file.getInputStream(), file.getSize(), -1)
-                            .contentType(file.getContentType())
+                            .object(objectName)
+                            .stream(stream, size, -1)
+                            .contentType(contentType)
                             .build()
             );
 
-            log.info("Video uploaded: {}", fileId);
-            return fileId;
+            log.info("Video uploaded: {}", objectName);
+            return objectName;
         } catch (Exception e) {
             log.error("Failed to upload video: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload video", e);
@@ -119,17 +129,19 @@ public class MinioService {
             ImageIO.write(image, "jpg", baos);
             byte[] thumbnailBytes = baos.toByteArray();
 
+            String objectName = fileId + ".jpeg";
+
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucketType.getBucketName())
-                            .object(fileId + ".jpeg")
+                            .object(objectName)
                             .stream(new ByteArrayInputStream(thumbnailBytes), thumbnailBytes.length, -1)
                             .contentType("image/jpeg")
                             .build()
             );
 
-            log.info("Image uploaded: {}", fileId);
-            return fileId;
+            log.info("Image uploaded: {}", objectName);
+            return objectName;
         } catch (Exception e) {
             log.error("Failed to upload image: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload image", e);

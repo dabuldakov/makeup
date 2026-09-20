@@ -82,7 +82,8 @@ class UserServiceIT extends AbstractIntegrationTest {
     void updateUserChangesFullNameAndAvatar() {
         User saved = userService.register(request("alice", "alice@example.com"));
 
-        User updates = new User();
+        com.example.makeup.dto.request.UpdateUserRequest updates =
+                new com.example.makeup.dto.request.UpdateUserRequest();
         updates.setFullName("Alice Updated");
         updates.setAvatarUrl("http://avatar/alice.png");
         User updated = userService.updateUser(saved.getId(), updates);

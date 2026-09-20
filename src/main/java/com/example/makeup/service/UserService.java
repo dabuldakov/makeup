@@ -1,8 +1,11 @@
 package com.example.makeup.service;
 
 import com.example.makeup.dto.request.RegisterRequest;
+import com.example.makeup.dto.request.UpdateUserRequest;
 import com.example.makeup.entity.Role;
 import com.example.makeup.entity.User;
+import com.example.makeup.exception.ConflictException;
+import com.example.makeup.exception.NotFoundException;
 import com.example.makeup.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,11 +21,11 @@ public class UserService {
 
     public User register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new ConflictException("Username already exists");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new ConflictException("Email already exists");
         }
 
         User user = User.builder()
@@ -44,13 +47,28 @@ public class UserService {
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
-    public User updateUser(Long id, User userDetails) {
+    public User updateUser(Long id, UpdateUserRequest request) {
         User user = getUserById(id);
-        user.setFullName(userDetails.getFullName());
-        user.setAvatarUrl(userDetails.getAvatarUrl());
+
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new ConflictException("Email already exists");
+            }
+            user.setEmail(request.getEmail());
+        }
+        if (request.getEnabled() != null) {
+            user.setActive(request.getEnabled());
+        }
+
         return userRepository.save(user);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.makeup.service;
 
 import com.example.makeup.dto.request.RegisterRequest;
+import com.example.makeup.dto.request.UpdateUserRequest;
 import com.example.makeup.entity.Role;
 import com.example.makeup.entity.User;
 import com.example.makeup.repository.UserRepository;
@@ -96,15 +97,14 @@ class UserServiceTest {
                 .username("alice")
                 .email("alice@mail.com")
                 .build();
-        User details = User.builder()
-                .fullName("New Name")
-                .avatarUrl("/avatars/1.jpg")
-                .build();
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setFullName("New Name");
+        request.setAvatarUrl("/avatars/1.jpg");
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(userRepository.save(existing)).thenReturn(existing);
 
-        User updated = userService.updateUser(1L, details);
+        User updated = userService.updateUser(1L, request);
 
         assertEquals("New Name", updated.getFullName());
         assertEquals("/avatars/1.jpg", updated.getAvatarUrl());

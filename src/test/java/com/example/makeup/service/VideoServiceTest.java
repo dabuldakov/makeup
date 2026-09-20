@@ -2,6 +2,7 @@ package com.example.makeup.service;
 
 import com.example.makeup.entity.User;
 import com.example.makeup.entity.Video;
+import com.example.makeup.exception.NotFoundException;
 import com.example.makeup.repository.VideoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,14 +15,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.awt.image.BufferedImage;
+import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,45 +42,43 @@ class VideoServiceTest {
     private UserService userService;
 
     @Mock
-    private ThumbnailGeneratorService thumbnailGeneratorService;
+    private ThumbnailProcessor thumbnailProcessor;
 
     @InjectMocks
     private VideoService videoService;
 
     @Test
-    void uploadVideo_shouldUploadFileSaveAndGenerateThumbnail() {
+    void uploadVideo_shouldUploadFileSaveAndScheduleThumbnail() {
         User user = User.builder().id(1L).username("alice").build();
         MockMultipartFile file = new MockMultipartFile("file", "clip.mp4", "video/mp4", new byte[]{1, 2});
 
         when(userService.getUserByUsername("alice")).thenReturn(user);
-        when(minioService.uploadVideo(any(), anyString())).thenReturn("cafe0000");
-        when(videoRepository.save(any(Video.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(thumbnailGeneratorService.generateThumbnail(any()))
-                .thenReturn(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));
-        when(minioService.uploadThumbnail(any(), anyString())).thenReturn("cafe0000.jpeg");
+        when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
+                .thenReturn("cafe0000.mp4");
+        when(videoRepository.save(any(Video.class))).thenAnswer(inv -> {
+            Video v = inv.getArgument(0);
+            v.setId(42L);
+            return v;
+        });
 
         Video result = videoService.uploadVideo(file, "Title", "Desc", "alice");
 
-        assertEquals("thumbnails/cafe0000.jpeg", result.getThumbnailPath());
-        verify(minioService).uploadThumbnail(any(), anyString());
+        assertEquals("cafe0000.mp4", result.getFileName());
+        verify(thumbnailProcessor).generateAndAttach(anyLong(), any(Path.class));
+        verify(videoRepository).save(any(Video.class));
     }
 
     @Test
-    void uploadVideo_shouldStillSaveWhenThumbnailFails() {
-        User user = User.builder().id(1L).username("alice").build();
-        Video saved = Video.builder().id(1L).build();
+    void uploadVideo_shouldNotCallMinioWhenUploadFails() {
         MockMultipartFile file = new MockMultipartFile("file", "clip.mp4", "video/mp4", new byte[]{1});
+        when(userService.getUserByUsername("alice")).thenReturn(User.builder().id(1L).build());
+        when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
+                .thenThrow(new RuntimeException("minio down"));
 
-        when(userService.getUserByUsername("alice")).thenReturn(user);
-        when(minioService.uploadVideo(any(), anyString())).thenReturn("cafe0000");
-        when(videoRepository.save(any(Video.class))).thenReturn(saved);
-        when(thumbnailGeneratorService.generateThumbnail(any()))
-                .thenThrow(new RuntimeException("thumbnail gen failed"));
+        assertThrows(RuntimeException.class, () -> videoService.uploadVideo(file, "Title", "Desc", "alice"));
 
-        Video result = videoService.uploadVideo(file, "Title", "Desc", "alice");
-
-        assertEquals(saved, result);
-        verify(minioService, never()).uploadThumbnail(any(), anyString());
+        verify(videoRepository, never()).save(any(Video.class));
+        verify(thumbnailProcessor, never()).generateAndAttach(anyLong(), any(Path.class));
     }
 
     @Test
@@ -95,18 +95,23 @@ class VideoServiceTest {
     void getVideoById_shouldThrowWhenAbsent() {
         when(videoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> videoService.getVideoById(1L));
+        assertThrows(NotFoundException.class, () -> videoService.getVideoById(1L));
     }
 
     @Test
-    void incrementViews_shouldIncrementAndSave() {
-        Video video = Video.builder().id(1L).views(10).build();
-        when(videoRepository.findById(1L)).thenReturn(Optional.of(video));
-        when(videoRepository.save(any(Video.class))).thenAnswer(inv -> inv.getArgument(0));
+    void incrementViews_shouldUseAtomicQuery() {
+        when(videoRepository.existsById(1L)).thenReturn(true);
 
         videoService.incrementViews(1L);
 
-        assertEquals(11, video.getViews());
-        verify(videoRepository).save(video);
+        verify(videoRepository).incrementViews(1L);
+    }
+
+    @Test
+    void incrementViews_shouldThrowWhenVideoMissing() {
+        when(videoRepository.existsById(1L)).thenReturn(false);
+
+        assertThrows(NotFoundException.class, () -> videoService.incrementViews(1L));
+        verify(videoRepository, never()).incrementViews(anyLong());
     }
 }

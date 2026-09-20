@@ -37,7 +37,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         .content("""
                                 {"username":"alice","email":"other@example.com","password":"password123","fullName":"Alice B"}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -49,7 +49,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         .content("""
                                 {"username":"bob","email":"alice@example.com","password":"password123","fullName":"Bob B"}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     @Test

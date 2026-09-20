@@ -5,7 +5,9 @@ import com.example.makeup.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,4 +21,12 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     @Query("SELECT v FROM Video v WHERE LOWER(v.title) LIKE LOWER(CONCAT('%', :query, '%'))")
     Page<Video> searchVideos(String query, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Video v SET v.views = v.views + 1 WHERE v.id = :id")
+    void incrementViews(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Video v SET v.thumbnailPath = :path WHERE v.id = :id")
+    void updateThumbnailPath(@Param("id") Long id, @Param("path") String path);
 }

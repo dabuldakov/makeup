@@ -22,9 +22,9 @@ class NewsControllerIT extends AbstractIntegrationTest {
     private static final String BEARER = "Bearer ";
 
     @Test
-    void getAllNewsWithoutTokenReturnsForbidden() throws Exception {
+    void getAllNewsWithoutTokenReturnsOk() throws Exception {
         mockMvc.perform(get("/api/news"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -88,9 +88,9 @@ class NewsControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void getNewsWithoutTokenReturnsForbidden() throws Exception {
+    void getNewsWithoutTokenReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/news/1"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test

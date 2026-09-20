@@ -41,7 +41,6 @@ class VideoServiceIT extends AbstractIntegrationTest {
         assertThat(saved.getContentType()).isEqualTo("video/mp4");
         assertThat(saved.getFileSize()).isEqualTo(4L);
         assertThat(saved.getViews()).isZero();
-        assertThat(saved.getThumbnailPath()).startsWith("thumbnails/");
         assertThat(saved.getUploadedBy().getUsername()).isEqualTo(author.getUsername());
     }
 

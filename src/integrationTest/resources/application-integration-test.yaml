@@ -19,3 +19,9 @@ minio:
   bucket: videos
   thumbnail-bucket: thumbnails
   news-image: news-image
+
+jwt:
+  secret: integration-test-secret-key-1234567890-abcdef
+
+app:
+  public-base-url: ""

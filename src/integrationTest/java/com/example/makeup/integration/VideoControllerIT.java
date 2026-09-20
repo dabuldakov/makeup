@@ -59,9 +59,9 @@ class VideoControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void getVideoWithoutTokenReturnsForbidden() throws Exception {
-        mockMvc.perform(get("/api/videos/1"))
-                .andExpect(status().isForbidden());
+    void getVideosWithoutTokenReturnsOk() throws Exception {
+        mockMvc.perform(get("/api/videos"))
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -13,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class NewsMapperTest {
 
-    private final NewsMapper mapper = new NewsMapper(new VideoMapper());
+    private final String baseUrl = "http://localhost:8080";
+    private final NewsMapper mapper = new NewsMapper(new VideoMapper(baseUrl), baseUrl);
 
     private NewsItem newsItem(Video video, String imageUrl) {
         User author = User.builder().username("alice").build();
@@ -35,7 +36,7 @@ class NewsMapperTest {
         assertEquals(10L, dto.getId());
         assertEquals("Title", dto.getTitle());
         assertEquals("Body", dto.getContent());
-        assertEquals("/api/news/image/img001.jpg", dto.getImageUrl());
+        assertEquals(baseUrl + "/api/news/image/img001.jpg", dto.getImageUrl());
         assertEquals("alice", dto.getAuthor());
         assertEquals("2026-01-01T12:00", dto.getPublishedAt().toString());
         assertNull(dto.getRelatedVideo());
@@ -54,7 +55,8 @@ class NewsMapperTest {
         Video video = Video.builder()
                 .id(7L)
                 .title("Clip")
-                .fileName("vid0001")
+                .fileName("vid0001.mp4")
+                .thumbnailPath("thumb0001.jpeg")
                 .contentType("video/mp4")
                 .fileSize(1024L)
                 .views(3)
@@ -67,6 +69,6 @@ class NewsMapperTest {
 
         assertEquals(7L, dto.getRelatedVideo().getId());
         assertEquals("/api/videos/stream/vid0001.mp4", dto.getRelatedVideo().getUrl());
-        assertEquals("/api/videos/thumbnail/vid0001.jpeg", dto.getRelatedVideo().getThumbnailUrl());
+        assertEquals(baseUrl + "/api/videos/thumbnail/thumb0001.jpeg", dto.getRelatedVideo().getThumbnailUrl());
     }
 }

@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -97,7 +99,8 @@ public abstract class AbstractIntegrationTest {
 
     @BeforeEach
     void stubExternalServices() {
-        when(minioService.uploadVideo(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class));
+        when(minioService.uploadVideo(any(java.io.InputStream.class), anyLong(), any(), anyString()))
+                .thenAnswer(inv -> inv.getArgument(3, String.class) + ".mp4");
         when(minioService.uploadThumbnail(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class));
         when(minioService.uploadNewsImage(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
         when(minioService.getImageBytes(any(), any())).thenReturn(new byte[]{1, 2, 3});

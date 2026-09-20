@@ -3,13 +3,18 @@ package com.example.makeup.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
+import lombok.Setter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode(of = "id")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -48,11 +53,12 @@ public class Video {
     @JoinColumn(name = "uploaded_by")
     private User uploadedBy;
 
-    @CreatedDate
     private LocalDateTime uploadedAt;
 
     @PrePersist
     protected void onCreate() {
         uploadedAt = LocalDateTime.now();
+        if (views == null) views = 0;
+        if (likes == null) likes = 0;
     }
 }
