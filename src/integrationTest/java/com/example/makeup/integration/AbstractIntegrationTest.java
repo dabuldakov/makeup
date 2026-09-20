@@ -83,8 +83,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.url", TestContainersRegistry.POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", TestContainersRegistry.POSTGRES::getUsername);
         registry.add("spring.datasource.password", TestContainersRegistry.POSTGRES::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-        registry.add("spring.flyway.enabled", () -> "false");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        registry.add("spring.flyway.enabled", () -> "true");
     }
 
     @BeforeEach

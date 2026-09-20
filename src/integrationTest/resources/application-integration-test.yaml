@@ -2,11 +2,13 @@ spring:
   # Критичные настройки (datasource, flyway, ddl-auto) задаются через
   # @DynamicPropertySource в AbstractIntegrationTest, чтобы гарантированно
   # перекрыть значение spring.profiles.active=dev из application.yaml.
+  # Схему создают Flyway-миграции (ddl-auto=none), как в продакшене, а не
+  # автогенерация Hibernate.
   flyway:
-    enabled: false
+    enabled: true
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
     show-sql: false
 
 # Настройки MinIO: сервис замокан в тестах, клиенты не выполняют реальных
