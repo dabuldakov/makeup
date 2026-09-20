@@ -48,7 +48,6 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET}
       JWT_SECRET: ${JWT_SECRET}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     env_file:
       - .env
     depends_on:

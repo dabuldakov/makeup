@@ -19,7 +19,7 @@ Gradle ставить не нужно, используется wrapper — `./g
 Интеграционные тесты поднимают полный Spring-контекст с MockMvc (реальные security-фильтры)
 и подключаются к реальному PostgreSQL в контейнере (`postgres:17-alpine`).
 MinIO и генерация превью замоканы (`@MockitoBean`), поэтому S3/ffmpeg не нужны.
-Профиль `integration-test`, схема создаётся Hibernate (`ddl-auto`), таблицы очищаются между тестами.
+Профиль `integration-test`, схема создаётся Flyway-миграциями (`ddl-auto=none`), таблицы очищаются между тестами.
 
 ## Запуск
 
@@ -95,3 +95,36 @@ src/integrationTest/java/com/example/makeup/integration/
 └── *IT.java                                      # интеграционные тесты
 src/integrationTest/resources/application-integration-test.yaml
 ```
+
+## Автодеплой
+
+При push в `main` GitHub Actions по SSH заходит на VPS, обновляет чекаут и пересобирает
+только сервис `app` (PostgreSQL и MinIO не трогаются):
+
+```bash
+cd "$DEPLOY_PATH"                      # например, /opt/makeup
+git fetch --prune origin main && git reset --hard origin/main
+docker compose up -d --build app
+```
+
+Workflow — `.github/workflows/deploy.yml` (можно запустить вручную: Actions → deploy → Run workflow).
+
+Секреты репозитория (Settings → Secrets and variables → Actions):
+
+| Секрет | Назначение |
+|--------|-----------|
+| `DEPLOY_HOST` | адрес VPS |
+| `DEPLOY_USER` | SSH-пользователь |
+| `DEPLOY_SSH_KEY` | приватный SSH-ключ без пароля |
+| `DEPLOY_PATH` | каталог чекаута на сервере, например `/opt/makeup` |
+
+Первичная настройка сервера:
+
+```bash
+git clone git@github.com:dabuldakov/makeup.git /opt/makeup
+cd /opt/makeup
+# создать .env с секретами (в git не коммитится), затем:
+docker compose up -d
+```
+
+Дальнейшие деплои идут автоматически при push в `main`.
