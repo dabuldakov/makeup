@@ -66,9 +66,6 @@ public class UserService {
             }
             user.setEmail(request.getEmail());
         }
-        if (request.getEnabled() != null) {
-            user.setActive(request.getEnabled());
-        }
 
         User updated = userRepository.save(user);
         userDetailsService.evict(updated.getUsername());

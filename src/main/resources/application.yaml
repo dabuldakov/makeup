@@ -26,7 +26,7 @@ spring:
         max-page-size: 100
 
 jwt:
-  expiration: 43200000000
+  expiration: ${JWT_EXPIRATION:604800000}
 
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}

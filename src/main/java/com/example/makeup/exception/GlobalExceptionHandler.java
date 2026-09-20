@@ -38,8 +38,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
-        log.error("Runtime exception: {}", ex.getMessage());
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+        log.error("Runtime exception: {}", ex.getMessage(), ex);
+        return build(HttpStatus.BAD_REQUEST, "Request cannot be processed");
     }
 
     @ExceptionHandler(Exception.class)

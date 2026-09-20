@@ -23,6 +23,11 @@ jwt:
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://90.188.89.63:8085}
 
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
+
 minio:
   url: ${MINIO_URL}
   access-key: ${MINIO_ACCESS_KEY}
