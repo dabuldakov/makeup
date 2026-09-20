@@ -1,5 +1,6 @@
 package com.example.makeup.integration;
 
+import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.User;
 import com.example.makeup.entity.Video;
 import com.example.makeup.repository.VideoRepository;
@@ -57,10 +58,11 @@ class VideoServiceIT extends AbstractIntegrationTest {
         videoService.uploadVideo(videoFile(), "Video 1", "d", author.getUsername());
         videoService.uploadVideo(videoFile(), "Video 2", "d", author.getUsername());
 
-        Page<Video> page = videoService.getAllVideos(PageRequest.of(0, 1));
+        Page<VideoItem> page = videoService.getAllVideos(PageRequest.of(0, 1));
 
         assertThat(page.getTotalElements()).isEqualTo(2L);
         assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).uploadedByUsername()).isEqualTo(author.getUsername());
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.example.makeup.service;
 
 import com.example.makeup.config.BucketType;
+import com.example.makeup.exception.NotFoundException;
 import io.minio.*;
+import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -160,9 +162,16 @@ public class MinioService {
                             .build()
             );
             return new InputStreamResource(stream);
+        } catch (ErrorResponseException e) {
+            if ("NoSuchKey".equals(e.errorResponse().code())) {
+                log.warn("Video file not found in bucket '{}': {}", videoBucketName, fileName);
+                throw new NotFoundException("Video file not found: " + fileName);
+            }
+            log.error("Failed to get video file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to get video file", e);
         } catch (Exception e) {
             log.error("Failed to get video file: {}", e.getMessage(), e);
-            throw new RuntimeException("Video not found", e);
+            throw new RuntimeException("Failed to get video file", e);
         }
     }
 
@@ -178,6 +187,13 @@ public class MinioService {
                             .build()
             );
             return new InputStreamResource(stream);
+        } catch (ErrorResponseException e) {
+            if ("NoSuchKey".equals(e.errorResponse().code())) {
+                log.warn("Thumbnail not found in bucket '{}': {}", thumbnailBucketName, thumbnailName);
+                throw new NotFoundException("Thumbnail not found: " + thumbnailName);
+            }
+            log.error("Failed to get thumbnail: {}", e.getMessage(), e);
+            throw new RuntimeException("Thumbnail not found", e);
         } catch (Exception e) {
             log.error("Failed to get thumbnail: {}", e.getMessage(), e);
             throw new RuntimeException("Thumbnail not found", e);
@@ -185,7 +201,7 @@ public class MinioService {
     }
 
     /**
-     * Получение превью как байтовый массив
+     * Получение превью/картинки как байтовый массив
      */
     public byte[] getImageBytes(String imageName, BucketType bucketType) {
         try {
@@ -196,9 +212,40 @@ public class MinioService {
                             .build()
             );
             return stream.readAllBytes();
+        } catch (ErrorResponseException e) {
+            if ("NoSuchKey".equals(e.errorResponse().code())) {
+                throw new NotFoundException("Image not found: " + imageName);
+            }
+            log.error("Failed to get image: {}", e.getMessage(), e);
+            throw new RuntimeException("Image not found", e);
         } catch (Exception e) {
-            log.error("Failed to get thumbnail bytes: {}", e.getMessage(), e);
-            throw new RuntimeException("Thumbnail not found", e);
+            log.error("Failed to get image: {}", e.getMessage(), e);
+            throw new RuntimeException("Image not found", e);
+        }
+    }
+
+    /**
+     * Получение превью/картинки потоком (не грузит объект в heap целиком).
+     */
+    public Resource getImageFile(String imageName, BucketType bucketType) {
+        try {
+            InputStream stream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucketType.getBucketName())
+                            .object(imageName)
+                            .build()
+            );
+            return new InputStreamResource(stream);
+        } catch (ErrorResponseException e) {
+            if ("NoSuchKey".equals(e.errorResponse().code())) {
+                log.warn("Image not found in bucket '{}': {}", bucketType.getBucketName(), imageName);
+                throw new NotFoundException("Image not found: " + imageName);
+            }
+            log.error("Failed to get image: {}", e.getMessage(), e);
+            throw new RuntimeException("Image not found", e);
+        } catch (Exception e) {
+            log.error("Failed to get image: {}", e.getMessage(), e);
+            throw new RuntimeException("Image not found", e);
         }
     }
 

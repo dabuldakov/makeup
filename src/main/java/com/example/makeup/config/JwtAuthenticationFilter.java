@@ -2,6 +2,7 @@ package com.example.makeup.config;
 
 import com.example.makeup.service.JwtService;
 import com.example.makeup.service.CustomUserDetailsService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,23 +34,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
+        final String jwt = authHeader.substring(7);
 
         try {
-            username = jwtService.extractUsername(jwt);
+            // Разбираем JWT один раз: подпись, subject и срок действия.
+            Claims claims = jwtService.parseClaims(jwt);
+            String username = claims.getSubject();
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null
+                    && !jwtService.isTokenExpired(claims)
+                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+                if (userDetails.getUsername().equals(username)
+                        && (userDetails.isEnabled())) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

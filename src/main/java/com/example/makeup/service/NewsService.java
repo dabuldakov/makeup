@@ -1,6 +1,7 @@
 package com.example.makeup.service;
 
 import com.example.makeup.config.BucketType;
+import com.example.makeup.dto.NewsListItem;
 import com.example.makeup.entity.NewsItem;
 import com.example.makeup.exception.NotFoundException;
 import com.example.makeup.repository.NewsRepository;
@@ -24,8 +25,8 @@ public class NewsService {
     private final UserService userService;
     private final MinioService minioService;
 
-    public Page<NewsItem> getAllNews(Pageable pageable) {
-        return newsRepository.findByIsPublishedTrueOrderByPublishedAtDesc(pageable);
+    public Page<NewsListItem> getAllNews(Pageable pageable) {
+        return newsRepository.findAllPublished(pageable);
     }
 
     public NewsItem getNewsById(Long id) {
@@ -65,6 +66,10 @@ public class NewsService {
 
     public byte[] getImage(String fileName) {
         return minioService.getImageBytes(fileName, BucketType.NEWS_IMAGE);
+    }
+
+    public org.springframework.core.io.Resource getImageFile(String fileName) {
+        return minioService.getImageFile(fileName, BucketType.NEWS_IMAGE);
     }
 
     private void uploadImage(MultipartFile image, NewsItem savedNews) {

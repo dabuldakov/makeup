@@ -1,5 +1,6 @@
 package com.example.makeup.service;
 
+import com.example.makeup.dto.NewsListItem;
 import com.example.makeup.entity.NewsItem;
 import com.example.makeup.entity.User;
 import com.example.makeup.repository.NewsRepository;
@@ -47,8 +48,10 @@ class NewsServiceTest {
     @Test
     void getAllNews_shouldReturnPublishedNewsDescending() {
         Pageable pageable = PageRequest.of(0, 20);
-        Page<NewsItem> page = new PageImpl<>(List.of(NewsItem.builder().build()));
-        when(newsRepository.findByIsPublishedTrueOrderByPublishedAtDesc(pageable)).thenReturn(page);
+        NewsListItem item = new NewsListItem(5L, "t", null, null, null, "author",
+                null, null, null, null, null, null, null, null, null, null, null, null);
+        Page<NewsListItem> page = new PageImpl<>(List.of(item));
+        when(newsRepository.findAllPublished(pageable)).thenReturn(page);
 
         assertEquals(page, newsService.getAllNews(pageable));
     }

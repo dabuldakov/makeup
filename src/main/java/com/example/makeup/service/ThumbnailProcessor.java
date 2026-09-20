@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
@@ -25,8 +24,7 @@ public class ThumbnailProcessor {
     private final MinioService minioService;
     private final VideoRepository videoRepository;
 
-    @Async
-    @Transactional
+    @Async("thumbnailExecutor")
     public void generateAndAttach(Long videoId, Path videoPath) {
         try {
             BufferedImage thumbnail = thumbnailGeneratorService.generateThumbnail(videoPath);

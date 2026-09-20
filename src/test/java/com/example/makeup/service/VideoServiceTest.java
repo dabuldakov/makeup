@@ -1,5 +1,6 @@
 package com.example.makeup.service;
 
+import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.User;
 import com.example.makeup.entity.Video;
 import com.example.makeup.exception.NotFoundException;
@@ -82,11 +83,11 @@ class VideoServiceTest {
     }
 
     @Test
-    void getAllVideos_shouldDelegateFindAll() {
+    void getAllVideos_shouldDelegateFindAllProjected() {
         Pageable pageable = PageRequest.of(0, 20);
-        Video video = Video.builder().id(1L).build();
-        Page<Video> page = new PageImpl<>(List.of(video));
-        when(videoRepository.findAll(pageable)).thenReturn(page);
+        VideoItem item = new VideoItem(1L, "t", null, "f.mp4", null, null, null, null, 0, 0, null, "alice");
+        Page<VideoItem> page = new PageImpl<>(List.of(item));
+        when(videoRepository.findAllProjected(pageable)).thenReturn(page);
 
         assertEquals(page, videoService.getAllVideos(pageable));
     }
@@ -100,7 +101,7 @@ class VideoServiceTest {
 
     @Test
     void incrementViews_shouldUseAtomicQuery() {
-        when(videoRepository.existsById(1L)).thenReturn(true);
+        when(videoRepository.incrementViews(1L)).thenReturn(1);
 
         videoService.incrementViews(1L);
 
@@ -109,9 +110,8 @@ class VideoServiceTest {
 
     @Test
     void incrementViews_shouldThrowWhenVideoMissing() {
-        when(videoRepository.existsById(1L)).thenReturn(false);
+        when(videoRepository.incrementViews(1L)).thenReturn(0);
 
         assertThrows(NotFoundException.class, () -> videoService.incrementViews(1L));
-        verify(videoRepository, never()).incrementViews(anyLong());
     }
 }

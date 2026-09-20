@@ -19,6 +19,8 @@ public class ThumbnailGeneratorService {
     private static final int DEFAULT_WIDTH = 400;
     private static final int DEFAULT_HEIGHT = 300;
 
+    private volatile Boolean ffmpegAvailable;
+
     public BufferedImage generateThumbnail(Path videoPath) {
         return generateThumbnail(videoPath, DEFAULT_WIDTH, DEFAULT_HEIGHT);
     }
@@ -105,6 +107,10 @@ public class ThumbnailGeneratorService {
     }
 
     private boolean isFFmpegAvailable() {
+        Boolean cached = ffmpegAvailable;
+        if (cached != null) {
+            return cached;
+        }
         try {
             ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-version");
             Process process = pb.start();
@@ -116,11 +122,13 @@ public class ThumbnailGeneratorService {
                     String version = reader.readLine();
                     log.info("FFmpeg is available: {}", version);
                 }
+                ffmpegAvailable = true;
                 return true;
             }
         } catch (Exception e) {
             log.warn("FFmpeg not available: {}", e.getMessage());
         }
+        ffmpegAvailable = false;
         return false;
     }
 

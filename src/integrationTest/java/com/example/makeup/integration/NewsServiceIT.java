@@ -1,5 +1,6 @@
 package com.example.makeup.integration;
 
+import com.example.makeup.dto.NewsListItem;
 import com.example.makeup.entity.NewsItem;
 import com.example.makeup.entity.User;
 import com.example.makeup.entity.Video;
@@ -94,10 +95,10 @@ class NewsServiceIT extends AbstractIntegrationTest {
                 .build();
         newsRepository.save(hidden);
 
-        Page<NewsItem> page = newsService.getAllNews(PageRequest.of(0, 10));
+        Page<NewsListItem> page = newsService.getAllNews(PageRequest.of(0, 10));
 
         assertThat(page.getTotalElements()).isEqualTo(2L);
-        List<String> titles = page.getContent().stream().map(NewsItem::getTitle).toList();
+        List<String> titles = page.getContent().stream().map(NewsListItem::title).toList();
         assertThat(titles).containsExactlyInAnyOrder("Published 1", "Published 2");
     }
 
@@ -107,10 +108,11 @@ class NewsServiceIT extends AbstractIntegrationTest {
         newsService.createNews("News 1", "content", null, author.getUsername(), null);
         newsService.createNews("News 2", "content", null, author.getUsername(), null);
 
-        Page<NewsItem> page = newsService.getAllNews(PageRequest.of(0, 1));
+        Page<NewsListItem> page = newsService.getAllNews(PageRequest.of(0, 1));
 
         assertThat(page.getTotalElements()).isEqualTo(2L);
         assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).authorUsername()).isEqualTo(author.getUsername());
     }
 
     @Test

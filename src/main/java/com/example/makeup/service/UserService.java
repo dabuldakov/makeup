@@ -18,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CustomUserDetailsService userDetailsService;
 
     public User register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -69,6 +70,8 @@ public class UserService {
             user.setActive(request.getEnabled());
         }
 
-        return userRepository.save(user);
+        User updated = userRepository.save(user);
+        userDetailsService.evict(updated.getUsername());
+        return updated;
     }
 }

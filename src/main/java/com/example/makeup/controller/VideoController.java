@@ -2,6 +2,7 @@ package com.example.makeup.controller;
 
 import com.example.makeup.dto.mapper.VideoMapper;
 import com.example.makeup.dto.response.VideoResponse;
+import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.Video;
 import com.example.makeup.service.VideoService;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class VideoController {
 
     @GetMapping
     public ResponseEntity<List<VideoResponse>> getAllVideos(Pageable pageable) {
-        Page<Video> allVideos = videoService.getAllVideos(pageable);
+        Page<VideoItem> allVideos = videoService.getAllVideos(pageable);
         List<VideoResponse> responses = allVideos.get().map(videoMapper::toResponse).toList();
         return ResponseEntity.ok(responses);
     }
@@ -60,11 +61,11 @@ public class VideoController {
     }
 
     @GetMapping("/thumbnail/{fileName}")
-    public ResponseEntity<byte[]> getVideoThumbnail(@PathVariable String fileName) {
-        byte[] thumbnailBytes = videoService.getThumbnailBytes(fileName);
+    public ResponseEntity<Resource> getVideoThumbnail(@PathVariable String fileName) {
+        Resource resource = videoService.getThumbnailFile(fileName);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
-                .body(thumbnailBytes);
+                .body(resource);
     }
 
     @GetMapping("/thumbnail/url/{fileName}")

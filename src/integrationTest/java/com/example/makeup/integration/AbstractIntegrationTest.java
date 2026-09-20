@@ -10,10 +10,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -29,7 +33,6 @@ import java.io.ByteArrayInputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -51,8 +54,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("integration-test")
 public abstract class AbstractIntegrationTest {
-
-    private static final List<String> CLEANUP_TABLES = List.of("news", "videos", "users");
 
     @Autowired
     protected DataSource dataSource;
@@ -91,9 +92,9 @@ public abstract class AbstractIntegrationTest {
     void cleanDatabase() throws SQLException {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
-            for (String table : CLEANUP_TABLES) {
-                statement.executeUpdate("DELETE FROM " + table);
-            }
+            statement.executeUpdate(
+                    "TRUNCATE TABLE news, videos, users RESTART IDENTITY CASCADE"
+            );
         }
     }
 
@@ -104,11 +105,27 @@ public abstract class AbstractIntegrationTest {
         when(minioService.uploadThumbnail(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class));
         when(minioService.uploadNewsImage(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
         when(minioService.getImageBytes(any(), any())).thenReturn(new byte[]{1, 2, 3});
+        when(minioService.getImageFile(any(), any())).thenReturn(
+                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3}))
+        );
         when(minioService.getVideoFile(any())).thenReturn(
                 new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3}))
         );
         when(minioService.getVideoPresignedUrl(any())).thenReturn("http://localhost:9000/presigned/video");
         when(minioService.getThumbnailPresignedUrl(any())).thenReturn("http://localhost:9000/presigned/thumbnail");
+    }
+
+    /**
+     * Удешевляем BCrypt в тестах (strength 4 вместо 10 по умолчанию),
+     * чтобы регистрация/логин не тратили сотни миллисекунд на каждый вызов.
+     */
+    @TestConfiguration
+    static class WeakPasswordEncoderConfig {
+        @Bean
+        @Primary
+        PasswordEncoder testPasswordEncoder() {
+            return new BCryptPasswordEncoder(4);
+        }
     }
 
     protected String registerUser(String username) throws Exception {

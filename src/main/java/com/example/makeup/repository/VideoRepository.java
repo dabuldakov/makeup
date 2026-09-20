@@ -1,5 +1,6 @@
 package com.example.makeup.repository;
 
+import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.Video;
 import com.example.makeup.entity.User;
 import org.springframework.data.domain.Page;
@@ -16,6 +17,19 @@ import java.util.List;
 public interface VideoRepository extends JpaRepository<Video, Long> {
     Page<Video> findByUploadedBy(User user, Pageable pageable);
 
+    /**
+     * Лента видео без гидрации полных сущностей {@link User} (join только по
+     * нужным колонкам) — не тянет password/email загрузивших.
+     */
+    @Query("""
+            SELECT new com.example.makeup.dto.VideoItem(
+                v.id, v.title, v.description, v.fileName, v.contentType, v.fileSize,
+                v.duration, v.thumbnailPath, v.views, v.likes, v.uploadedAt, u.username)
+            FROM Video v
+            LEFT JOIN v.uploadedBy u
+            """)
+    Page<VideoItem> findAllProjected(Pageable pageable);
+
     @Query("SELECT v FROM Video v ORDER BY v.views DESC")
     Page<Video> findMostPopular(Pageable pageable);
 
@@ -24,7 +38,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     @Modifying
     @Query("UPDATE Video v SET v.views = v.views + 1 WHERE v.id = :id")
-    void incrementViews(@Param("id") Long id);
+    int incrementViews(@Param("id") Long id);
 
     @Modifying
     @Query("UPDATE Video v SET v.thumbnailPath = :path WHERE v.id = :id")

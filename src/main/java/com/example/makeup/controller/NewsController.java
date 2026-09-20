@@ -50,10 +50,10 @@ public class NewsController {
     }
 
     @GetMapping("/image/{fileName}")
-    public ResponseEntity<byte[]> getImage(@PathVariable String fileName) {
-        byte[] bytes = newsService.getImage(fileName);
+    public ResponseEntity<org.springframework.core.io.Resource> getImage(@PathVariable String fileName) {
+        org.springframework.core.io.Resource resource = newsService.getImageFile(fileName);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
-                .body(bytes);
+                .body(resource);
     }
 }

@@ -54,6 +54,6 @@ class VideoMapperTest {
 
     @Test
     void toResponse_shouldReturnNullForNullVideo() {
-        assertNull(mapper.toResponse(null));
+        assertNull(mapper.toResponse((Video) null));
     }
 }

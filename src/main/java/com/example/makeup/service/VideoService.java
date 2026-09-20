@@ -1,6 +1,7 @@
 package com.example.makeup.service;
 
 import com.example.makeup.config.BucketType;
+import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.Video;
 import com.example.makeup.entity.User;
 import com.example.makeup.exception.NotFoundException;
@@ -87,8 +88,12 @@ public class VideoService {
         return minioService.getImageBytes(fileName, BucketType.THUMBNAILS);
     }
 
-    public Page<Video> getAllVideos(Pageable pageable) {
-        return videoRepository.findAll(pageable);
+    public org.springframework.core.io.Resource getThumbnailFile(String fileName) {
+        return minioService.getImageFile(fileName, BucketType.THUMBNAILS);
+    }
+
+    public Page<VideoItem> getAllVideos(Pageable pageable) {
+        return videoRepository.findAllProjected(pageable);
     }
 
     public Video getVideoById(Long id) {
@@ -96,11 +101,16 @@ public class VideoService {
                 .orElseThrow(() -> new NotFoundException("Video not found"));
     }
 
+    /**
+     * Атомарно увеличивает счётчик просмотров. Возвращает 0, если видео не найдено,
+     * и флаг существования приходит из самой UPDATE-операции (без отдельного SELECT).
+     */
     @Transactional
-    public void incrementViews(Long id) {
-        if (!videoRepository.existsById(id)) {
+    public int incrementViews(Long id) {
+        int updated = videoRepository.incrementViews(id);
+        if (updated == 0) {
             throw new NotFoundException("Video not found");
         }
-        videoRepository.incrementViews(id);
+        return updated;
     }
 }
