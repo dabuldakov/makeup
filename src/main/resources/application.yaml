@@ -40,6 +40,7 @@ server:
       max: 100
       min-spare: 10
     accept-count: 200
+    max-keep-alive-requests: -1
   error:
     include-message: always
     include-binding-errors: always
