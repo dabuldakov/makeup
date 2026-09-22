@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,7 +51,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {
         Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
+        response.put("timestamp", LocalDateTime.now(ZoneOffset.UTC));
         response.put("message", message);
         response.put("status", status.value());
         return ResponseEntity.status(status).body(response);

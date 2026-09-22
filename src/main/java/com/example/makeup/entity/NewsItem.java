@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Getter
 @Setter
@@ -48,6 +49,6 @@ public class NewsItem {
 
     @PrePersist
     protected void onCreate() {
-        publishedAt = LocalDateTime.now();
+        publishedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

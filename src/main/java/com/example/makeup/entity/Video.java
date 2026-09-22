@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Getter
 @Setter
@@ -57,7 +58,7 @@ public class Video {
 
     @PrePersist
     protected void onCreate() {
-        uploadedAt = LocalDateTime.now();
+        uploadedAt = LocalDateTime.now(ZoneOffset.UTC);
         if (views == null) views = 0;
         if (likes == null) likes = 0;
     }
