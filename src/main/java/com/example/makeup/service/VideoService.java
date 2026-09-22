@@ -5,12 +5,14 @@ import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.Video;
 import com.example.makeup.entity.User;
 import com.example.makeup.exception.NotFoundException;
+import com.example.makeup.repository.NewsRepository;
 import com.example.makeup.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class VideoService {
 
     private final VideoRepository videoRepository;
+    private final NewsRepository newsRepository;
     private final MinioService minioService;
     private final UserService userService;
     private final ThumbnailProcessor thumbnailProcessor;
@@ -124,5 +127,29 @@ public class VideoService {
             throw new NotFoundException("Video not found");
         }
         return updated;
+    }
+
+    /**
+     * Удаление видео: доступно только загрузившему его пользователю.
+     * Отвязывает видео от новостей и удаляет файл + превью из MinIO.
+     */
+    @Transactional
+    public void deleteVideo(Long id, String username) {
+        Video video = getVideoById(id);
+
+        if (video.getUploadedBy() == null || !username.equals(video.getUploadedBy().getUsername())) {
+            throw new AccessDeniedException("Only the uploader can delete this video");
+        }
+
+        newsRepository.detachVideo(id);
+
+        if (video.getThumbnailPath() != null && !video.getThumbnailPath().isBlank()) {
+            minioService.deleteThumbnail(video.getThumbnailPath());
+        }
+        if (video.getFileName() != null && !video.getFileName().isBlank()) {
+            minioService.deleteVideo(video.getFileName());
+        }
+
+        videoRepository.delete(video);
     }
 }

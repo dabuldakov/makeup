@@ -80,4 +80,10 @@ public class VideoController {
     public ResponseEntity<String> getVideoUrl(@PathVariable String fileName) {
         return ResponseEntity.ok(videoService.getVideoUrl(fileName));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVideo(@PathVariable Long id, Authentication authentication) {
+        videoService.deleteVideo(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 }

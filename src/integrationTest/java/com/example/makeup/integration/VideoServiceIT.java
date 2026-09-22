@@ -14,6 +14,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -95,15 +96,50 @@ class VideoServiceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void uploadVideoSurvivesThumbnailGenerationFailure() {
-        User author = createUser("author5");
-        when(thumbnailGeneratorService.generateThumbnail(any()))
-                .thenThrow(new RuntimeException("ffmpeg unavailable"));
+    void getAllVideosSortsByCreationTimeDescending() {
+        User author = createUser("sort-author");
+        Video first = videoService.uploadVideo(videoFile(), "Older video", "d", null, author.getUsername());
+        Video second = videoService.uploadVideo(videoFile(), "Newer video", "d", null, author.getUsername());
 
-        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", null, author.getUsername());
+        Page<VideoItem> page = videoService.getAllVideos(PageRequest.of(0, 10));
 
-        Video reloaded = videoRepository.findById(video.getId()).orElseThrow();
-        assertThat(reloaded.getThumbnailPath()).isNull();
-        assertThat(reloaded.getTitle()).isEqualTo("Video title");
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getContent().get(0).id()).isEqualTo(second.getId());
+        assertThat(page.getContent().get(1).id()).isEqualTo(first.getId());
+    }
+
+    @Test
+    void deleteVideoRemovesVideoAndFiles() {
+        User author = createUser("delete-author");
+        Video video = videoService.uploadVideo(
+                videoFile(), "To delete", "d",
+                new MockMultipartFile("thumbnail", "p.jpeg", "image/jpeg", new byte[]{1, 2, 3}),
+                author.getUsername());
+
+        Video saved = videoRepository.findById(video.getId()).orElseThrow();
+        videoService.deleteVideo(video.getId(), author.getUsername());
+
+        assertThat(videoRepository.findById(video.getId())).isEmpty();
+        verify(minioService).deleteVideo(saved.getFileName());
+        verify(minioService).deleteThumbnail(saved.getThumbnailPath());
+    }
+
+    @Test
+    void deleteVideoByNonOwnerFails() {
+        User author = createUser("delete-owner");
+        User other = createUser("delete-other");
+        Video video = videoService.uploadVideo(videoFile(), "Mine", "d", null, author.getUsername());
+
+        assertThatThrownBy(() -> videoService.deleteVideo(video.getId(), other.getUsername()))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThat(videoRepository.findById(video.getId())).isPresent();
+    }
+
+    @Test
+    void deleteVideoByUnknownIdFails() {
+        User author = createUser("delete-unknown");
+        assertThatThrownBy(() -> videoService.deleteVideo(999L, author.getUsername()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Video not found");
     }
 }

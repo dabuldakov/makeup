@@ -27,6 +27,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
                 v.duration, v.thumbnailPath, v.views, v.likes, v.uploadedAt, u.username)
             FROM Video v
             LEFT JOIN v.uploadedBy u
+            ORDER BY v.uploadedAt DESC, v.id DESC
             """)
     Page<VideoItem> findAllProjected(Pageable pageable);
 

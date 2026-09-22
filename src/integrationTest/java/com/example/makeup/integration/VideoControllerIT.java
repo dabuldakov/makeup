@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -123,5 +124,42 @@ class VideoControllerIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).get("id").asLong();
+    }
+
+    @Test
+    void deleteVideoWithoutTokenReturnsForbidden() throws Exception {
+        mockMvc.perform(delete("/api/videos/1"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteVideoAsOwnerReturnsNoContent() throws Exception {
+        String token = registerUser("owner");
+        long id = upload(token, "Remove me");
+
+        mockMvc.perform(delete("/api/videos/" + id).header("Authorization", BEARER + token))
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(videoRepository.findById(id)).isEmpty();
+    }
+
+    @Test
+    void deleteVideoAsOtherUserReturnsForbidden() throws Exception {
+        String ownerToken = registerUser("owner2");
+        String otherToken = registerUser("other2");
+        long id = upload(ownerToken, "Not yours");
+
+        mockMvc.perform(delete("/api/videos/" + id).header("Authorization", BEARER + otherToken))
+                .andExpect(status().isForbidden());
+
+        org.assertj.core.api.Assertions.assertThat(videoRepository.findById(id)).isPresent();
+    }
+
+    @Test
+    void deleteVideoWithUnknownIdReturnsNotFound() throws Exception {
+        String token = registerUser("owner3");
+
+        mockMvc.perform(delete("/api/videos/999").header("Authorization", BEARER + token))
+                .andExpect(status().isNotFound());
     }
 }

@@ -5,7 +5,9 @@ import com.example.makeup.entity.NewsItem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -29,4 +31,12 @@ public interface NewsRepository extends JpaRepository<NewsItem, Long> {
             ORDER BY n.publishedAt DESC
             """)
     Page<NewsListItem> findAllPublished(Pageable pageable);
+
+    /**
+     * Отвязывает удаляемое видео от новостей, чтобы новости с isPublished=true
+     * не остались со ссылкой на несуществующую запись (иначе detail-маппинг падал бы).
+     */
+    @Modifying
+    @Query("UPDATE NewsItem n SET n.relatedVideo = NULL WHERE n.relatedVideo.id = :videoId")
+    void detachVideo(@Param("videoId") Long videoId);
 }
