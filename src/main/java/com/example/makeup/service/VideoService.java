@@ -71,6 +71,7 @@ public class VideoService {
 
                 Video savedVideo = videoRepository.save(builder.build());
                 Files.deleteIfExists(tempVideo);
+                log.info("Video uploaded: id={}, title={}, by user={}", savedVideo.getId(), title, username);
                 return savedVideo;
             }
 
@@ -78,6 +79,8 @@ public class VideoService {
 
             // Генерация превью вынесена в отдельный поток; временный файл удалит processor.
             thumbnailProcessor.generateAndAttach(savedVideo.getId(), tempVideo);
+            log.info("Video uploaded: id={}, title={}, by user={} (thumbnail generation in background)",
+                    savedVideo.getId(), title, username);
 
             return savedVideo;
 
@@ -108,6 +111,7 @@ public class VideoService {
     }
 
     public Page<VideoItem> getAllVideos(Pageable pageable) {
+        log.debug("Fetching videos list (page: {}, size: {})", pageable.getPageNumber(), pageable.getPageSize());
         return videoRepository.findAllProjected(pageable);
     }
 
@@ -151,5 +155,6 @@ public class VideoService {
         }
 
         videoRepository.delete(video);
+        log.info("Video deleted: id={}, by user={}", id, username);
     }
 }

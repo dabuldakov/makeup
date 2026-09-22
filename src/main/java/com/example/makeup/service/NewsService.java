@@ -26,6 +26,7 @@ public class NewsService {
     private final MinioService minioService;
 
     public Page<NewsListItem> getAllNews(Pageable pageable) {
+        log.debug("Fetching news list (page: {}, size: {})", pageable.getPageNumber(), pageable.getPageSize());
         return newsRepository.findAllPublished(pageable);
     }
 
@@ -48,6 +49,7 @@ public class NewsService {
         // Загружаем изображение если оно предоставлено
         uploadImage(image, savedNews);
 
+        log.info("News created: id={}, title={}, by user={}", savedNews.getId(), title, username);
         return savedNews.getId();
     }
 
@@ -62,6 +64,7 @@ public class NewsService {
         }
 
         newsRepository.delete(news);
+        log.info("News deleted: id={}, by user={}", id, username);
     }
 
     public byte[] getImage(String fileName) {
