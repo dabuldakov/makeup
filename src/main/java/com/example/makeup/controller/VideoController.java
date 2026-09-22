@@ -31,9 +31,11 @@ public class VideoController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("title") String title,
             @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail,
             Authentication authentication
     ) {
-        Video video = videoService.uploadVideo(file, title, description, authentication.getName());
+        Video video = videoService.uploadVideo(file, title, description, thumbnail,
+                authentication.getName());
         return ResponseEntity.ok(videoMapper.toResponse(video));
     }
 

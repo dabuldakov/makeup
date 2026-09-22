@@ -32,7 +32,7 @@ class VideoServiceIT extends AbstractIntegrationTest {
     void uploadVideoPersistsMetadata() {
         User author = createUser("author1");
 
-        Video video = videoService.uploadVideo(videoFile(), "My Video", "My description", author.getUsername());
+        Video video = videoService.uploadVideo(videoFile(), "My Video", "My description", null, author.getUsername());
 
         Video saved = videoRepository.findById(video.getId()).orElseThrow();
         assertThat(saved.getTitle()).isEqualTo("My Video");
@@ -47,7 +47,7 @@ class VideoServiceIT extends AbstractIntegrationTest {
 
     @Test
     void uploadVideoWithUnknownUserFails() {
-        assertThatThrownBy(() -> videoService.uploadVideo(videoFile(), "T", "d", "missing-user"))
+        assertThatThrownBy(() -> videoService.uploadVideo(videoFile(), "T", "d", null, "missing-user"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Failed to upload video");
     }
@@ -55,8 +55,8 @@ class VideoServiceIT extends AbstractIntegrationTest {
     @Test
     void getAllVideosPaginates() {
         User author = createUser("author2");
-        videoService.uploadVideo(videoFile(), "Video 1", "d", author.getUsername());
-        videoService.uploadVideo(videoFile(), "Video 2", "d", author.getUsername());
+        videoService.uploadVideo(videoFile(), "Video 1", "d", null, author.getUsername());
+        videoService.uploadVideo(videoFile(), "Video 2", "d", null, author.getUsername());
 
         Page<VideoItem> page = videoService.getAllVideos(PageRequest.of(0, 1));
 
@@ -68,7 +68,7 @@ class VideoServiceIT extends AbstractIntegrationTest {
     @Test
     void getVideoByIdReturnsUploadedVideo() {
         User author = createUser("author3");
-        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", author.getUsername());
+        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", null, author.getUsername());
 
         Video found = videoService.getVideoById(video.getId());
 
@@ -85,7 +85,7 @@ class VideoServiceIT extends AbstractIntegrationTest {
     @Test
     void incrementViewsIncrementsStoredCounter() {
         User author = createUser("author4");
-        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", author.getUsername());
+        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", null, author.getUsername());
 
         videoService.incrementViews(video.getId());
         videoService.incrementViews(video.getId());
@@ -100,7 +100,7 @@ class VideoServiceIT extends AbstractIntegrationTest {
         when(thumbnailGeneratorService.generateThumbnail(any()))
                 .thenThrow(new RuntimeException("ffmpeg unavailable"));
 
-        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", author.getUsername());
+        Video video = videoService.uploadVideo(videoFile(), "Video title", "d", null, author.getUsername());
 
         Video reloaded = videoRepository.findById(video.getId()).orElseThrow();
         assertThat(reloaded.getThumbnailPath()).isNull();

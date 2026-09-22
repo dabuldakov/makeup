@@ -105,6 +105,31 @@ public class MinioService {
     }
 
     /**
+     * Загрузка превью в MinIO из файла, переданного клиентом вместе с видео.
+     * Позволяет сохранить превью сразу при загрузке, не дожидаясь async ffmpeg.
+     */
+    public String uploadThumbnail(MultipartFile file, String fileId) {
+        try {
+            String objectName = fileId + ".jpeg";
+
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(thumbnailBucketName)
+                            .object(objectName)
+                            .stream(file.getInputStream(), file.getSize(), -1)
+                            .contentType("image/jpeg")
+                            .build()
+            );
+
+            log.info("Thumbnail uploaded: {}", objectName);
+            return objectName;
+        } catch (Exception e) {
+            log.error("Failed to upload thumbnail: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload thumbnail", e);
+        }
+    }
+
+    /**
      * Загрузка изображения для новости в MinIO
      */
     public String uploadNewsImage(MultipartFile file, String fileId) {

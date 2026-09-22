@@ -62,11 +62,37 @@ class VideoServiceTest {
             return v;
         });
 
-        Video result = videoService.uploadVideo(file, "Title", "Desc", "alice");
+        Video result = videoService.uploadVideo(file, "Title", "Desc", null, "alice");
 
         assertEquals("cafe0000.mp4", result.getFileName());
         verify(thumbnailProcessor).generateAndAttach(anyLong(), any(Path.class));
         verify(videoRepository).save(any(Video.class));
+    }
+
+    @Test
+    void uploadVideo_withClientThumbnail_SavesThumbnailSynchronouslyAndSkipsAsyncProcessing() {
+        User user = User.builder().id(1L).username("alice").build();
+        MockMultipartFile file = new MockMultipartFile("file", "clip.mp4", "video/mp4", new byte[]{1, 2});
+        MockMultipartFile thumbnail =
+                new MockMultipartFile("thumbnail", "thumb.jpeg", "image/jpeg", new byte[]{3, 4, 5});
+
+        when(userService.getUserByUsername("alice")).thenReturn(user);
+        when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
+                .thenReturn("cafe0000.mp4");
+        when(minioService.uploadThumbnail(any(MockMultipartFile.class), anyString()))
+                .thenReturn("thumb-uuid.jpeg");
+        when(videoRepository.save(any(Video.class))).thenAnswer(inv -> {
+            Video v = inv.getArgument(0);
+            v.setId(42L);
+            return v;
+        });
+
+        Video result = videoService.uploadVideo(file, "Title", "Desc", thumbnail, "alice");
+
+        assertEquals("thumb-uuid.jpeg", result.getThumbnailPath());
+        verify(minioService).uploadThumbnail(any(MockMultipartFile.class), anyString());
+        verify(videoRepository).save(any(Video.class));
+        verify(thumbnailProcessor, never()).generateAndAttach(anyLong(), any(Path.class));
     }
 
     @Test
@@ -76,7 +102,7 @@ class VideoServiceTest {
         when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("minio down"));
 
-        assertThrows(RuntimeException.class, () -> videoService.uploadVideo(file, "Title", "Desc", "alice"));
+        assertThrows(RuntimeException.class, () -> videoService.uploadVideo(file, "Title", "Desc", null, "alice"));
 
         verify(videoRepository, never()).save(any(Video.class));
         verify(thumbnailProcessor, never()).generateAndAttach(anyLong(), any(Path.class));

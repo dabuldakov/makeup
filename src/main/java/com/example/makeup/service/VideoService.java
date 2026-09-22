@@ -30,7 +30,8 @@ public class VideoService {
     private final UserService userService;
     private final ThumbnailProcessor thumbnailProcessor;
 
-    public Video uploadVideo(MultipartFile file, String title, String description, String username) {
+    public Video uploadVideo(MultipartFile file, String title, String description,
+                             MultipartFile thumbnail, String username) {
         try {
             User user = userService.getUserByUsername(username);
 
@@ -47,7 +48,7 @@ public class VideoService {
                         file.getContentType(), fileId);
             }
 
-            Video video = Video.builder()
+            Video.VideoBuilder builder = Video.builder()
                     .title(title)
                     .description(description)
                     .fileName(fileName)
@@ -56,10 +57,21 @@ public class VideoService {
                     .fileSize(file.getSize())
                     .uploadedBy(user)
                     .views(0)
-                    .likes(0)
-                    .build();
+                    .likes(0);
 
-            Video savedVideo = videoRepository.save(video);
+            // Клиент прислал готовое превью — сохраняем его синхронно
+            // и пропускаем фоновую генерацию ffmpeg.
+            if (thumbnail != null && !thumbnail.isEmpty()) {
+                String thumbnailName = minioService.uploadThumbnail(thumbnail,
+                        UUID.randomUUID().toString());
+                builder.thumbnailPath(thumbnailName);
+
+                Video savedVideo = videoRepository.save(builder.build());
+                Files.deleteIfExists(tempVideo);
+                return savedVideo;
+            }
+
+            Video savedVideo = videoRepository.save(builder.build());
 
             // Генерация превью вынесена в отдельный поток; временный файл удалит processor.
             thumbnailProcessor.generateAndAttach(savedVideo.getId(), tempVideo);

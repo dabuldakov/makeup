@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.sql.DataSource;
 import java.io.ByteArrayInputStream;
@@ -102,7 +103,8 @@ public abstract class AbstractIntegrationTest {
     void stubExternalServices() {
         when(minioService.uploadVideo(any(java.io.InputStream.class), anyLong(), any(), anyString()))
                 .thenAnswer(inv -> inv.getArgument(3, String.class) + ".mp4");
-        when(minioService.uploadThumbnail(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class));
+        when(minioService.uploadThumbnail(any(MultipartFile.class), anyString()))
+                .thenAnswer(inv -> inv.getArgument(1, String.class));
         when(minioService.uploadNewsImage(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
         when(minioService.getImageBytes(any(), any())).thenReturn(new byte[]{1, 2, 3});
         when(minioService.getImageFile(any(), any())).thenReturn(

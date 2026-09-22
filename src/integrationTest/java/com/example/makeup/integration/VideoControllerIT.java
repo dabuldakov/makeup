@@ -47,6 +47,20 @@ class VideoControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void uploadVideoWithThumbnailReturnsThumbnailUrlInResponse() throws Exception {
+        String token = registerUser("thumb-author");
+
+        mockMvc.perform(multipart("/api/videos/upload")
+                        .file(videoFile())
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "thumbnail", "preview.jpeg", "image/jpeg", new byte[]{9, 9, 9}))
+                        .param("title", "With thumb")
+                        .header("Authorization", BEARER + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.thumbnailUrl", containsString("/api/videos/thumbnail/")));
+    }
+
+    @Test
     void getAllVideosReturnsUploadedVideos() throws Exception {
         String token = registerUser("author2");
         upload(token, "Video 1");
