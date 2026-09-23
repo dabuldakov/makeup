@@ -12,9 +12,10 @@ public class VideoResponse {
     private String url;
     private String thumbnailUrl;
     private Long fileSize;
-    private String duration;
-    private Integer views;
-    private Integer likes;
+    private Integer durationSeconds;
+    private Long views;
+    private Long likes;
+    private Boolean likedByMe;
     private String uploadedBy;
     private String uploadedAt;
 }

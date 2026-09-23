@@ -2,10 +2,13 @@ package com.example.makeup.service;
 
 import com.example.makeup.config.BucketType;
 import com.example.makeup.dto.VideoItem;
-import com.example.makeup.entity.Video;
 import com.example.makeup.entity.User;
+import com.example.makeup.entity.Video;
+import com.example.makeup.entity.VideoLike;
+import com.example.makeup.entity.VideoStatus;
 import com.example.makeup.exception.NotFoundException;
 import com.example.makeup.repository.NewsRepository;
+import com.example.makeup.repository.VideoLikeRepository;
 import com.example.makeup.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,60 +31,58 @@ import java.util.UUID;
 public class VideoService {
 
     private final VideoRepository videoRepository;
+    private final VideoLikeRepository videoLikeRepository;
     private final NewsRepository newsRepository;
     private final MinioService minioService;
     private final UserService userService;
-    private final ThumbnailProcessor thumbnailProcessor;
+    private final MediaJobService mediaJobService;
 
+    @Transactional
     public Video uploadVideo(MultipartFile file, String title, String description,
                              MultipartFile thumbnail, String username) {
         try {
             User user = userService.getUserByUsername(username);
 
             String fileId = UUID.randomUUID().toString();
-
             Path tempVideo = Files.createTempFile("video_", ".mp4");
             try (InputStream input = file.getInputStream()) {
                 Files.copy(input, tempVideo, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
 
-            String fileName;
+            String objectKey;
             try (InputStream staged = Files.newInputStream(tempVideo)) {
-                fileName = minioService.uploadVideo(staged, Files.size(tempVideo),
+                objectKey = minioService.uploadVideo(staged, Files.size(tempVideo),
                         file.getContentType(), fileId);
             }
+            Files.deleteIfExists(tempVideo);
 
             Video.VideoBuilder builder = Video.builder()
                     .title(title)
                     .description(description)
-                    .fileName(fileName)
-                    .filePath("videos/" + fileName)
+                    .objectKey(objectKey)
                     .contentType(file.getContentType())
                     .fileSize(file.getSize())
                     .uploadedBy(user)
-                    .views(0)
-                    .likes(0);
+                    .views(0L)
+                    .likesCount(0L);
 
-            // Клиент прислал готовое превью — сохраняем его синхронно
-            // и пропускаем фоновую генерацию ffmpeg.
+            // Клиент прислал готовое превью — публикуем сразу.
             if (thumbnail != null && !thumbnail.isEmpty()) {
-                String thumbnailName = minioService.uploadThumbnail(thumbnail,
-                        UUID.randomUUID().toString());
-                builder.thumbnailPath(thumbnailName);
+                String thumbnailKey = minioService.uploadThumbnail(thumbnail, UUID.randomUUID().toString());
+                builder.thumbnailKey(thumbnailKey).status(VideoStatus.PUBLISHED);
 
                 Video savedVideo = videoRepository.save(builder.build());
-                Files.deleteIfExists(tempVideo);
                 log.info("Video uploaded: id={}, title={}, by user={}", savedVideo.getId(), title, username);
                 return savedVideo;
             }
 
+            // Видео публикуется сразу, превью сгенерируем в фоне через media_jobs.
+            builder.status(VideoStatus.PUBLISHED);
             Video savedVideo = videoRepository.save(builder.build());
+            mediaJobService.enqueue(savedVideo.getId());
 
-            // Генерация превью вынесена в отдельный поток; временный файл удалит processor.
-            thumbnailProcessor.generateAndAttach(savedVideo.getId(), tempVideo);
-            log.info("Video uploaded: id={}, title={}, by user={} (thumbnail generation in background)",
+            log.info("Video uploaded: id={}, title={}, by user={} (thumbnail queued)",
                     savedVideo.getId(), title, username);
-
             return savedVideo;
 
         } catch (Exception e) {
@@ -90,24 +91,24 @@ public class VideoService {
         }
     }
 
-    public Resource getVideoFile(String fileName) {
-        return minioService.getVideoFile(fileName);
+    public Resource getVideoFile(String objectKey) {
+        return minioService.getVideoFile(objectKey);
     }
 
-    public String getVideoUrl(String fileName) {
-        return minioService.getVideoPresignedUrl(fileName);
+    public String getVideoUrl(String objectKey) {
+        return minioService.getVideoPresignedUrl(objectKey);
     }
 
-    public String getThumbnailUrl(String fileName) {
-        return minioService.getThumbnailPresignedUrl(fileName);
+    public String getThumbnailUrl(String thumbnailKey) {
+        return minioService.getThumbnailPresignedUrl(thumbnailKey);
     }
 
-    public byte[] getThumbnailBytes(String fileName) {
-        return minioService.getImageBytes(fileName, BucketType.THUMBNAILS);
+    public byte[] getThumbnailBytes(String thumbnailKey) {
+        return minioService.getImageBytes(thumbnailKey, BucketType.THUMBNAILS);
     }
 
-    public org.springframework.core.io.Resource getThumbnailFile(String fileName) {
-        return minioService.getImageFile(fileName, BucketType.THUMBNAILS);
+    public Resource getThumbnailFile(String thumbnailKey) {
+        return minioService.getImageFile(thumbnailKey, BucketType.THUMBNAILS);
     }
 
     public Page<VideoItem> getAllVideos(Pageable pageable) {
@@ -134,6 +135,36 @@ public class VideoService {
     }
 
     /**
+     * Переключает лайк пользователя и синхронно правит денормализованный счётчик.
+     * Возвращает актуальное число лайков.
+     */
+    @Transactional
+    public long toggleLike(Long videoId, String username) {
+        User user = userService.getUserByUsername(username);
+        getVideoById(videoId);
+
+        if (videoLikeRepository.existsByUserIdAndVideoId(user.getId(), videoId)) {
+            videoLikeRepository.deleteByUserIdAndVideoId(user.getId(), videoId);
+            videoRepository.adjustLikesCount(videoId, -1);
+        } else {
+            videoLikeRepository.save(VideoLike.builder()
+                    .userId(user.getId())
+                    .videoId(videoId)
+                    .build());
+            videoRepository.adjustLikesCount(videoId, 1);
+        }
+
+        return videoRepository.findById(videoId)
+                .map(Video::getLikesCount)
+                .orElse(0L);
+    }
+
+    public boolean isLikedBy(Long videoId, String username) {
+        User user = userService.getUserByUsername(username);
+        return videoLikeRepository.existsByUserIdAndVideoId(user.getId(), videoId);
+    }
+
+    /**
      * Удаление видео: доступно только загрузившему его пользователю.
      * Отвязывает видео от новостей и удаляет файл + превью из MinIO.
      */
@@ -147,11 +178,11 @@ public class VideoService {
 
         newsRepository.detachVideo(id);
 
-        if (video.getThumbnailPath() != null && !video.getThumbnailPath().isBlank()) {
-            minioService.deleteThumbnail(video.getThumbnailPath());
+        if (video.getThumbnailKey() != null && !video.getThumbnailKey().isBlank()) {
+            minioService.deleteThumbnail(video.getThumbnailKey());
         }
-        if (video.getFileName() != null && !video.getFileName().isBlank()) {
-            minioService.deleteVideo(video.getFileName());
+        if (video.getObjectKey() != null && !video.getObjectKey().isBlank()) {
+            minioService.deleteVideo(video.getObjectKey());
         }
 
         videoRepository.delete(video);

@@ -10,9 +10,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface NewsRepository extends JpaRepository<NewsItem, Long> {
-    Page<NewsItem> findByIsPublishedTrueOrderByPublishedAtDesc(Pageable pageable);
+
+    Optional<NewsItem> findByIdAndDeletedAtIsNull(Long id);
 
     /**
      * Лента опубликованных новостей без гидрации полных сущностей Video/User
@@ -20,21 +23,22 @@ public interface NewsRepository extends JpaRepository<NewsItem, Long> {
      */
     @Query("""
             SELECT new com.example.makeup.dto.NewsListItem(
-                n.id, n.title, n.content, n.imageUrl, n.publishedAt, a.username,
-                v.id, v.title, v.description, v.fileName, v.contentType, v.fileSize,
-                v.duration, v.thumbnailPath, v.views, v.likes, v.uploadedAt, u.username)
+                n.id, n.title, n.content, n.imageKey, n.publishedAt, a.username,
+                v.id, v.title, v.description, v.objectKey, v.contentType, v.fileSize,
+                v.durationSeconds, v.thumbnailKey, v.views, v.likesCount, v.createdAt, u.username)
             FROM NewsItem n
             LEFT JOIN n.author a
             LEFT JOIN n.relatedVideo v
             LEFT JOIN v.uploadedBy u
-            WHERE n.isPublished = true
+            WHERE n.status = com.example.makeup.entity.NewsStatus.PUBLISHED
+              AND n.deletedAt IS NULL
             ORDER BY n.publishedAt DESC
             """)
     Page<NewsListItem> findAllPublished(Pageable pageable);
 
     /**
-     * Отвязывает удаляемое видео от новостей, чтобы новости с isPublished=true
-     * не остались со ссылкой на несуществующую запись (иначе detail-маппинг падал бы).
+     * Отвязывает удаляемое видео от новостей, чтобы новости не остались
+     * со ссылкой на несуществующую запись.
      */
     @Modifying
     @Query("UPDATE NewsItem n SET n.relatedVideo = NULL WHERE n.relatedVideo.id = :videoId")

@@ -27,8 +27,8 @@ public class NewsMapper {
                 .id(newsItem.getId())
                 .title(newsItem.getTitle())
                 .content(newsItem.getContent())
-                .imageUrl(newsItem.getImageUrl() != null
-                        ? publicBaseUrl + "/api/news/image/" + newsItem.getImageUrl()
+                .imageUrl(newsItem.getImageKey() != null
+                        ? publicBaseUrl + "/api/news/image/" + newsItem.getImageKey()
                         : null)
                 .relatedVideo(videoMapper.toResponse(newsItem.getRelatedVideo()))
                 .publishedAt(newsItem.getPublishedAt())
@@ -44,8 +44,8 @@ public class NewsMapper {
                 .id(item.id())
                 .title(item.title())
                 .content(item.content())
-                .imageUrl(item.imageUrl() != null
-                        ? publicBaseUrl + "/api/news/image/" + item.imageUrl()
+                .imageUrl(item.imageKey() != null
+                        ? publicBaseUrl + "/api/news/image/" + item.imageKey()
                         : null)
                 .relatedVideo(item.hasRelatedVideo() ? toVideoResponse(item) : null)
                 .publishedAt(item.publishedAt())
@@ -58,15 +58,16 @@ public class NewsMapper {
                 .id(item.videoId())
                 .title(item.videoTitle())
                 .description(item.videoDescription())
-                .url("/api/videos/stream/" + item.videoFileName())
-                .thumbnailUrl(item.videoThumbnailPath() != null
-                        ? publicBaseUrl + "/api/videos/thumbnail/" + item.videoThumbnailPath()
+                .url("/api/videos/stream/" + item.videoObjectKey())
+                .thumbnailUrl(item.videoThumbnailKey() != null
+                        ? publicBaseUrl + "/api/videos/thumbnail/" + item.videoThumbnailKey()
                         : null)
                 .fileSize(item.videoFileSize())
+                .durationSeconds(item.videoDurationSeconds())
                 .views(item.videoViews())
-                .likes(item.videoLikes())
+                .likes(item.videoLikesCount())
                 .uploadedBy(item.videoUploadedByUsername())
-                .uploadedAt(item.videoUploadedAt() != null ? item.videoUploadedAt().toString() : null)
+                .uploadedAt(item.videoCreatedAt() != null ? item.videoCreatedAt().toString() : null)
                 .build();
     }
 }

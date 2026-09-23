@@ -2,6 +2,7 @@ package com.example.makeup.integration;
 
 import com.example.makeup.dto.NewsListItem;
 import com.example.makeup.entity.NewsItem;
+import com.example.makeup.entity.NewsStatus;
 import com.example.makeup.entity.User;
 import com.example.makeup.entity.Video;
 import com.example.makeup.repository.NewsRepository;
@@ -36,12 +37,11 @@ class NewsServiceIT extends AbstractIntegrationTest {
         return videoRepository.save(Video.builder()
                 .title("Video title")
                 .description("desc")
-                .fileName("video-file.mp4")
-                .filePath("videos/video-file.mp4")
+                .objectKey("video-file.mp4")
                 .contentType("video/mp4")
                 .fileSize(1024L)
                 .uploadedBy(author)
-                .views(0)
+                .views(0L)
                 .build());
     }
 
@@ -55,8 +55,8 @@ class NewsServiceIT extends AbstractIntegrationTest {
         NewsItem news = newsService.getNewsById(id);
         assertThat(news.getTitle()).isEqualTo("News title");
         assertThat(news.getAuthor().getUsername()).isEqualTo(username);
-        assertThat(news.isPublished()).isTrue();
-        assertThat(news.getImageUrl()).isNull();
+        assertThat(news.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
+        assertThat(news.getImageKey()).isNull();
     }
 
     @Test
@@ -66,7 +66,7 @@ class NewsServiceIT extends AbstractIntegrationTest {
         Long id = newsService.createNews("With image", "content", null, author.getUsername(), imageFile());
 
         NewsItem news = newsService.getNewsById(id);
-        assertThat(news.getImageUrl()).isNotBlank().endsWith(".jpeg");
+        assertThat(news.getImageKey()).isNotBlank().endsWith(".jpeg");
     }
 
     @Test
@@ -91,7 +91,7 @@ class NewsServiceIT extends AbstractIntegrationTest {
                 .title("Hidden")
                 .content("content")
                 .author(author)
-                .isPublished(false)
+                .status(NewsStatus.DRAFT)
                 .build();
         newsRepository.save(hidden);
 

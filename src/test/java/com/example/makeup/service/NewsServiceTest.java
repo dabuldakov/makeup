@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,14 +60,14 @@ class NewsServiceTest {
     @Test
     void getNewsById_shouldReturnNews() {
         NewsItem news = NewsItem.builder().id(5L).build();
-        when(newsRepository.findById(5L)).thenReturn(Optional.of(news));
+        when(newsRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(news));
 
         assertEquals(news, newsService.getNewsById(5L));
     }
 
     @Test
     void getNewsById_shouldThrowWhenAbsent() {
-        when(newsRepository.findById(5L)).thenReturn(Optional.empty());
+        when(newsRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> newsService.getNewsById(5L));
     }
@@ -88,7 +89,7 @@ class NewsServiceTest {
     void createNews_shouldUploadAndAttachImage() {
         User author = User.builder().id(1L).username("alice").build();
         NewsItem firstSaved = NewsItem.builder().id(10L).build();
-        NewsItem secondSaved = NewsItem.builder().id(10L).imageUrl("uuid121212").build();
+        NewsItem secondSaved = NewsItem.builder().id(10L).imageKey("uuid121212").build();
         MockMultipartFile image = new MockMultipartFile("image", "x.jpg", "image/jpeg", new byte[]{1, 2, 3});
 
         when(userService.getUserByUsername("alice")).thenReturn(author);
@@ -116,27 +117,29 @@ class NewsServiceTest {
     }
 
     @Test
-    void deleteNews_shouldDeleteOwnNewsAndItsImage() {
-        NewsItem news = NewsItem.builder().id(7L).imageUrl("img-uuid")
+    void deleteNews_shouldSoftDeleteOwnNewsAndRemoveImage() {
+        NewsItem news = NewsItem.builder().id(7L).imageKey("img-uuid")
                 .author(User.builder().id(1L).username("alice").build()).build();
-        when(newsRepository.findById(7L)).thenReturn(Optional.of(news));
+        when(newsRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(news));
 
         newsService.deleteNews(7L, "alice");
 
         verify(minioService).deleteNewsImage("img-uuid");
-        verify(newsRepository).delete(news);
+        verify(newsRepository).save(news);
+        verify(newsRepository, never()).delete(any(NewsItem.class));
+        assertNotNull(news.getDeletedAt());
     }
 
     @Test
     void deleteNews_shouldRejectNonAuthor() {
-        NewsItem news = NewsItem.builder().id(7L).imageUrl("img-uuid")
+        NewsItem news = NewsItem.builder().id(7L).imageKey("img-uuid")
                 .author(User.builder().id(1L).username("alice").build()).build();
-        when(newsRepository.findById(7L)).thenReturn(Optional.of(news));
+        when(newsRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(news));
 
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> newsService.deleteNews(7L, "bob"));
 
-        verify(newsRepository, never()).delete(any(NewsItem.class));
+        verify(newsRepository, never()).save(any(NewsItem.class));
         verify(minioService, never()).deleteNewsImage(anyString());
     }
 
@@ -144,12 +147,12 @@ class NewsServiceTest {
     void deleteNews_shouldSkipImageWhenAbsent() {
         NewsItem news = NewsItem.builder().id(7L)
                 .author(User.builder().id(1L).username("alice").build()).build();
-        when(newsRepository.findById(7L)).thenReturn(Optional.of(news));
+        when(newsRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(news));
 
         newsService.deleteNews(7L, "alice");
 
         verify(minioService, never()).deleteNewsImage(anyString());
-        verify(newsRepository).delete(news);
+        verify(newsRepository).save(news);
     }
 
     @Test

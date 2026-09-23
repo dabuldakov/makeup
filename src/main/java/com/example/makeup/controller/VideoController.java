@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/videos")
@@ -47,10 +48,25 @@ public class VideoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<VideoResponse> getVideo(@PathVariable Long id) {
+    public ResponseEntity<VideoResponse> getVideo(@PathVariable Long id, Authentication authentication) {
         videoService.incrementViews(id);
         Video video = videoService.getVideoById(id);
-        return ResponseEntity.ok(videoMapper.toResponse(video));
+        Boolean likedByMe = authentication != null
+                ? videoService.isLikedBy(id, authentication.getName())
+                : null;
+        return ResponseEntity.ok(videoMapper.toResponse(video, likedByMe));
+    }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Map<String, Object>> likeVideo(@PathVariable Long id, Authentication authentication) {
+        long likes = videoService.toggleLike(id, authentication.getName());
+        return ResponseEntity.ok(Map.of("liked", true, "likes", likes));
+    }
+
+    @DeleteMapping("/{id}/like")
+    public ResponseEntity<Map<String, Object>> unlikeVideo(@PathVariable Long id, Authentication authentication) {
+        long likes = videoService.toggleLike(id, authentication.getName());
+        return ResponseEntity.ok(Map.of("liked", false, "likes", likes));
     }
 
     @GetMapping("/stream/{fileName}")

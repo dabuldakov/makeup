@@ -3,6 +3,7 @@ package com.example.makeup.service;
 import com.example.makeup.config.BucketType;
 import com.example.makeup.dto.NewsListItem;
 import com.example.makeup.entity.NewsItem;
+import com.example.makeup.entity.NewsStatus;
 import com.example.makeup.exception.NotFoundException;
 import com.example.makeup.repository.NewsRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +12,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Service
@@ -31,40 +35,48 @@ public class NewsService {
     }
 
     public NewsItem getNewsById(Long id) {
-        return newsRepository.findById(id)
+        return newsRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException("News not found"));
     }
 
+    @Transactional
     public Long createNews(String title, String content, Long videoId, String username, MultipartFile image) {
         NewsItem news = NewsItem.builder()
                 .title(title)
                 .content(content)
                 .author(userService.getUserByUsername(username))
                 .relatedVideo(videoId != null ? videoService.getVideoById(videoId) : null)
-                .isPublished(true)
+                .status(NewsStatus.PUBLISHED)
+                .publishedAt(LocalDateTime.now(ZoneOffset.UTC))
                 .build();
 
         NewsItem savedNews = newsRepository.save(news);
 
-        // Загружаем изображение если оно предоставлено
         uploadImage(image, savedNews);
 
         log.info("News created: id={}, title={}, by user={}", savedNews.getId(), title, username);
         return savedNews.getId();
     }
 
+    /**
+     * Мягкое удаление: помечаем deleted_at (запись остаётся для аудита),
+     * изображение удаляем из хранилища.
+     */
+    @Transactional
     public void deleteNews(Long id, String username) {
         NewsItem news = getNewsById(id);
         if (news.getAuthor() == null || !username.equals(news.getAuthor().getUsername())) {
             throw new AccessDeniedException("Only the author can delete this news");
         }
 
-        if (news.getImageUrl() != null) {
-            minioService.deleteNewsImage(news.getImageUrl());
+        if (news.getImageKey() != null) {
+            minioService.deleteNewsImage(news.getImageKey());
         }
 
-        newsRepository.delete(news);
-        log.info("News deleted: id={}, by user={}", id, username);
+        news.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
+        news.setStatus(NewsStatus.ARCHIVED);
+        newsRepository.save(news);
+        log.info("News soft-deleted: id={}, by user={}", id, username);
     }
 
     public byte[] getImage(String fileName) {
@@ -79,8 +91,8 @@ public class NewsService {
         if (image != null && !image.isEmpty()) {
             try {
                 String fileId = UUID.randomUUID().toString();
-                String imageName = minioService.uploadNewsImage(image, fileId);
-                savedNews.setImageUrl(imageName);
+                String imageKey = minioService.uploadNewsImage(image, fileId);
+                savedNews.setImageKey(imageKey);
                 newsRepository.save(savedNews);
             } catch (Exception e) {
                 log.error("Failed to upload news image: {}", e.getMessage(), e);

@@ -18,13 +18,13 @@ class NewsMapperTest {
     private final String baseUrl = "http://localhost:8080";
     private final NewsMapper mapper = new NewsMapper(new VideoMapper(baseUrl), baseUrl);
 
-    private NewsItem newsItem(Video video, String imageUrl) {
+    private NewsItem newsItem(Video video, String imageKey) {
         User author = User.builder().username("alice").build();
         return NewsItem.builder()
                 .id(10L)
                 .title("Title")
                 .content("Body")
-                .imageUrl(imageUrl)
+                .imageKey(imageKey)
                 .relatedVideo(video)
                 .author(author)
                 .publishedAt(LocalDateTime.of(2026, 1, 1, 12, 0))
@@ -72,8 +72,8 @@ class NewsMapperTest {
     void toResponse_shouldMapProjectionWithRelatedVideo() {
         var item = new NewsListItem(11L, "News", "Body", null,
                 LocalDateTime.of(2026, 2, 1, 9, 30), "alice",
-                7L, "Clip", "Cool", "vid0001.mp4", "video/mp4", 2048L, "0:10",
-                "th001.jpeg", 5, 2, LocalDateTime.of(2026, 1, 2, 9, 0), "bob");
+                7L, "Clip", "Cool", "vid0001.mp4", "video/mp4", 2048L, 10,
+                "th001.jpeg", 5L, 2L, LocalDateTime.of(2026, 1, 2, 9, 0), "bob");
 
         NewsResponse dto = mapper.toResponse(item);
         VideoResponse video = dto.getRelatedVideo();
@@ -91,14 +91,14 @@ class NewsMapperTest {
         Video video = Video.builder()
                 .id(7L)
                 .title("Clip")
-                .fileName("vid0001.mp4")
-                .thumbnailPath("thumb0001.jpeg")
+                .objectKey("vid0001.mp4")
+                .thumbnailKey("thumb0001.jpeg")
                 .contentType("video/mp4")
                 .fileSize(1024L)
-                .views(3)
-                .likes(1)
+                .views(3L)
+                .likesCount(1L)
                 .uploadedBy(author)
-                .uploadedAt(LocalDateTime.of(2026, 1, 2, 9, 0))
+                .createdAt(LocalDateTime.of(2026, 1, 2, 9, 0))
                 .build();
 
         NewsResponse dto = mapper.toResponse(newsItem(video, null));

@@ -94,7 +94,7 @@ public abstract class AbstractIntegrationTest {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate(
-                    "TRUNCATE TABLE news, videos, users RESTART IDENTITY CASCADE"
+                    "TRUNCATE TABLE media_jobs, video_likes, news, videos, users RESTART IDENTITY CASCADE"
             );
         }
     }
@@ -105,6 +105,8 @@ public abstract class AbstractIntegrationTest {
                 .thenAnswer(inv -> inv.getArgument(3, String.class) + ".mp4");
         when(minioService.uploadThumbnail(any(MultipartFile.class), anyString()))
                 .thenAnswer(inv -> inv.getArgument(1, String.class));
+        when(minioService.uploadThumbnail(any(java.awt.image.BufferedImage.class), anyString()))
+                .thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
         when(minioService.uploadNewsImage(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
         when(minioService.getImageBytes(any(), any())).thenReturn(new byte[]{1, 2, 3});
         when(minioService.getImageFile(any(), any())).thenReturn(

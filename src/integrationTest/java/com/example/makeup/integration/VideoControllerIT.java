@@ -97,7 +97,7 @@ class VideoControllerIT extends AbstractIntegrationTest {
     void streamVideoReturnsFile() throws Exception {
         String token = registerUser("author4");
         long id = upload(token, "Stream me");
-        String fileName = videoRepository.findById(id).orElseThrow().getFileName();
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
                         .header("Authorization", BEARER + token))
@@ -108,7 +108,7 @@ class VideoControllerIT extends AbstractIntegrationTest {
     void getVideoPresignedUrlReturnsUrl() throws Exception {
         String token = registerUser("author5");
         long id = upload(token, "Url me");
-        String fileName = videoRepository.findById(id).orElseThrow().getFileName();
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/url/" + fileName)
                         .header("Authorization", BEARER + token))
@@ -124,6 +124,21 @@ class VideoControllerIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).get("id").asLong();
+    }
+
+    @Test
+    void likeAndUnlikeChangeLikesCount() throws Exception {
+        String token = registerUser("liker");
+        long id = upload(token, "Like endpoint");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/videos/" + id + "/like").header("Authorization", BEARER + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likes").value(1));
+
+        mockMvc.perform(delete("/api/videos/" + id + "/like").header("Authorization", BEARER + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likes").value(0));
     }
 
     @Test

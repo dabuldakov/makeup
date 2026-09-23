@@ -3,6 +3,7 @@ package com.example.makeup.integration;
 import com.example.makeup.dto.VideoItem;
 import com.example.makeup.entity.User;
 import com.example.makeup.entity.Video;
+import com.example.makeup.entity.VideoStatus;
 import com.example.makeup.repository.VideoRepository;
 import com.example.makeup.service.VideoService;
 import org.junit.jupiter.api.Test;
@@ -38,12 +39,25 @@ class VideoServiceIT extends AbstractIntegrationTest {
         Video saved = videoRepository.findById(video.getId()).orElseThrow();
         assertThat(saved.getTitle()).isEqualTo("My Video");
         assertThat(saved.getDescription()).isEqualTo("My description");
-        assertThat(saved.getFileName()).isNotBlank();
-        assertThat(saved.getFilePath()).startsWith("videos/");
+        assertThat(saved.getObjectKey()).isNotBlank();
         assertThat(saved.getContentType()).isEqualTo("video/mp4");
         assertThat(saved.getFileSize()).isEqualTo(4L);
         assertThat(saved.getViews()).isZero();
+        assertThat(saved.getStatus()).isEqualTo(VideoStatus.PUBLISHED);
         assertThat(saved.getUploadedBy().getUsername()).isEqualTo(author.getUsername());
+    }
+
+    @Test
+    void toggleLikeAddsAndRemovesLikeAndUpdatesCounter() {
+        User author = createUser("like-author");
+        Video video = videoService.uploadVideo(videoFile(), "Like me", "d", null, author.getUsername());
+
+        assertThat(videoService.toggleLike(video.getId(), author.getUsername())).isEqualTo(1L);
+        assertThat(videoService.isLikedBy(video.getId(), author.getUsername())).isTrue();
+        assertThat(videoRepository.findById(video.getId()).orElseThrow().getLikesCount()).isEqualTo(1L);
+
+        assertThat(videoService.toggleLike(video.getId(), author.getUsername())).isZero();
+        assertThat(videoService.isLikedBy(video.getId(), author.getUsername())).isFalse();
     }
 
     @Test
@@ -120,8 +134,8 @@ class VideoServiceIT extends AbstractIntegrationTest {
         videoService.deleteVideo(video.getId(), author.getUsername());
 
         assertThat(videoRepository.findById(video.getId())).isEmpty();
-        verify(minioService).deleteVideo(saved.getFileName());
-        verify(minioService).deleteThumbnail(saved.getThumbnailPath());
+        verify(minioService).deleteVideo(saved.getObjectKey());
+        verify(minioService).deleteThumbnail(saved.getThumbnailKey());
     }
 
     @Test

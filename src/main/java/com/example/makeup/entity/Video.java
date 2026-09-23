@@ -33,33 +33,62 @@ public class Video {
     @Column(length = 1000)
     private String description;
 
-    @Column(nullable = false)
-    private String fileName;
+    /**
+     * Ключ объекта в бакете videos (без префикса бакета): {@code <uuid>.<ext>}.
+     */
+    @Column(name = "object_key", nullable = false)
+    private String objectKey;
 
-    private String filePath;
+    /**
+     * Ключ объекта в бакете thumbnails: {@code <uuid>.jpeg}.
+     */
+    @Column(name = "thumbnail_key")
+    private String thumbnailKey;
 
+    @Column(name = "content_type", length = 100)
     private String contentType;
 
+    @Column(name = "file_size")
     private Long fileSize;
 
-    private String duration;
+    @Column(name = "duration_seconds")
+    private Integer durationSeconds;
 
-    private String thumbnailPath;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private VideoStatus status = VideoStatus.PUBLISHED;
 
-    private Integer views = 0;
+    @Column(nullable = false)
+    @Builder.Default
+    private Long views = 0L;
 
-    private Integer likes = 0;
+    @Column(name = "likes_count", nullable = false)
+    @Builder.Default
+    private Long likesCount = 0L;
 
-    @ManyToOne
-    @JoinColumn(name = "uploaded_by")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "uploaded_by", nullable = false)
     private User uploadedBy;
 
-    private LocalDateTime uploadedAt;
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        uploadedAt = LocalDateTime.now(ZoneOffset.UTC);
-        if (views == null) views = 0;
-        if (likes == null) likes = 0;
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        createdAt = now;
+        updatedAt = now;
+        if (views == null) views = 0L;
+        if (likesCount == null) likesCount = 0L;
+        if (status == null) status = VideoStatus.PUBLISHED;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

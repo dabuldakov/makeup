@@ -16,6 +16,10 @@ public class VideoMapper {
     }
 
     public VideoResponse toResponse(Video video) {
+        return toResponse(video, null);
+    }
+
+    public VideoResponse toResponse(Video video, Boolean likedByMe) {
         if (video == null) {
             return null;
         }
@@ -23,15 +27,17 @@ public class VideoMapper {
                 .id(video.getId())
                 .title(video.getTitle())
                 .description(video.getDescription())
-                .url("/api/videos/stream/" + video.getFileName())
-                .thumbnailUrl(video.getThumbnailPath() != null
-                        ? publicBaseUrl + "/api/videos/thumbnail/" + video.getThumbnailPath()
+                .url("/api/videos/stream/" + video.getObjectKey())
+                .thumbnailUrl(video.getThumbnailKey() != null
+                        ? publicBaseUrl + "/api/videos/thumbnail/" + video.getThumbnailKey()
                         : null)
                 .fileSize(video.getFileSize())
+                .durationSeconds(video.getDurationSeconds())
                 .views(video.getViews())
-                .likes(video.getLikes())
-                .uploadedBy(video.getUploadedBy().getUsername())
-                .uploadedAt(video.getUploadedAt() != null ? video.getUploadedAt().toString() : null)
+                .likes(video.getLikesCount())
+                .likedByMe(likedByMe)
+                .uploadedBy(video.getUploadedBy() != null ? video.getUploadedBy().getUsername() : null)
+                .uploadedAt(video.getCreatedAt() != null ? video.getCreatedAt().toString() : null)
                 .build();
     }
 
@@ -43,15 +49,16 @@ public class VideoMapper {
                 .id(v.id())
                 .title(v.title())
                 .description(v.description())
-                .url("/api/videos/stream/" + v.fileName())
-                .thumbnailUrl(v.thumbnailPath() != null
-                        ? publicBaseUrl + "/api/videos/thumbnail/" + v.thumbnailPath()
+                .url("/api/videos/stream/" + v.objectKey())
+                .thumbnailUrl(v.thumbnailKey() != null
+                        ? publicBaseUrl + "/api/videos/thumbnail/" + v.thumbnailKey()
                         : null)
                 .fileSize(v.fileSize())
+                .durationSeconds(v.durationSeconds())
                 .views(v.views())
-                .likes(v.likes())
+                .likes(v.likesCount())
                 .uploadedBy(v.uploadedByUsername())
-                .uploadedAt(v.uploadedAt() != null ? v.uploadedAt().toString() : null)
+                .uploadedAt(v.createdAt() != null ? v.createdAt().toString() : null)
                 .build();
     }
 }
