@@ -1,9 +1,9 @@
 package com.example.makeup.integration;
 
-import com.example.makeup.dto.request.RegisterRequest;
-import com.example.makeup.entity.User;
-import com.example.makeup.service.JwtService;
-import com.example.makeup.service.UserService;
+import com.example.makeup.auth.RegisterRequest;
+import com.example.makeup.auth.User;
+import com.example.makeup.security.JwtService;
+import com.example.makeup.auth.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -82,8 +82,8 @@ class UserServiceIT extends AbstractIntegrationTest {
     void updateUserChangesFullNameAndAvatar() {
         User saved = userService.register(request("alice", "alice@example.com"));
 
-        com.example.makeup.dto.request.UpdateUserRequest updates =
-                new com.example.makeup.dto.request.UpdateUserRequest();
+        com.example.makeup.auth.UpdateUserRequest updates =
+                new com.example.makeup.auth.UpdateUserRequest();
         updates.setFullName("Alice Updated");
         updates.setAvatarUrl("http://avatar/alice.png");
         User updated = userService.updateUser(saved.getId(), updates);

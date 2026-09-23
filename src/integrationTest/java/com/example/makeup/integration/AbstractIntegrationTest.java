@@ -1,11 +1,11 @@
 package com.example.makeup.integration;
 
-import com.example.makeup.entity.Role;
-import com.example.makeup.entity.User;
+import com.example.makeup.auth.Role;
+import com.example.makeup.auth.User;
 import com.example.makeup.integration.containers.TestContainersRegistry;
-import com.example.makeup.repository.UserRepository;
-import com.example.makeup.service.MinioService;
-import com.example.makeup.service.ThumbnailGeneratorService;
+import com.example.makeup.auth.UserRepository;
+import com.example.makeup.media.MinioService;
+import com.example.makeup.media.ThumbnailGeneratorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

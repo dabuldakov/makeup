@@ -1,6 +1,6 @@
 package com.example.makeup.integration;
 
-import com.example.makeup.entity.Video;
+import com.example.makeup.video.Video;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -21,7 +21,7 @@ class VideoControllerIT extends AbstractIntegrationTest {
     private static final String BEARER = "Bearer ";
 
     @Autowired
-    private com.example.makeup.repository.VideoRepository videoRepository;
+    private com.example.makeup.video.VideoRepository videoRepository;
 
     @Test
     void uploadVideoWithoutTokenReturnsForbidden() throws Exception {

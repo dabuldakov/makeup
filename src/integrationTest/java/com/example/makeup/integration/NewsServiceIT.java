@@ -1,13 +1,13 @@
 package com.example.makeup.integration;
 
-import com.example.makeup.dto.NewsListItem;
-import com.example.makeup.entity.NewsItem;
-import com.example.makeup.entity.NewsStatus;
-import com.example.makeup.entity.User;
-import com.example.makeup.entity.Video;
-import com.example.makeup.repository.NewsRepository;
-import com.example.makeup.repository.VideoRepository;
-import com.example.makeup.service.NewsService;
+import com.example.makeup.news.NewsListItem;
+import com.example.makeup.news.NewsItem;
+import com.example.makeup.news.NewsStatus;
+import com.example.makeup.auth.User;
+import com.example.makeup.video.Video;
+import com.example.makeup.news.NewsRepository;
+import com.example.makeup.video.VideoRepository;
+import com.example.makeup.news.NewsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;

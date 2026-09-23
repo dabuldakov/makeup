@@ -1,13 +1,13 @@
 package com.example.makeup.integration;
 
-import com.example.makeup.entity.MediaJobStatus;
-import com.example.makeup.entity.User;
-import com.example.makeup.entity.Video;
-import com.example.makeup.entity.VideoStatus;
-import com.example.makeup.repository.MediaJobRepository;
-import com.example.makeup.repository.VideoRepository;
-import com.example.makeup.service.MediaJobService;
-import com.example.makeup.service.VideoService;
+import com.example.makeup.media.MediaJobStatus;
+import com.example.makeup.auth.User;
+import com.example.makeup.video.Video;
+import com.example.makeup.video.VideoStatus;
+import com.example.makeup.media.MediaJobRepository;
+import com.example.makeup.video.VideoRepository;
+import com.example.makeup.media.MediaJobService;
+import com.example.makeup.video.VideoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
