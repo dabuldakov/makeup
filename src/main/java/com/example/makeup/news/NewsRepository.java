@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.example.makeup.auth.User;
@@ -16,6 +17,9 @@ import com.example.makeup.video.Video;
 public interface NewsRepository extends JpaRepository<NewsItem, Long> {
 
     Optional<NewsItem> findByIdAndDeletedAtIsNull(Long id);
+
+    /** Все новости автора, включая мягко удалённые — для удаления аккаунта. */
+    List<NewsItem> findAllByAuthor(User author);
 
     /**
      * Лента опубликованных новостей без гидрации полных сущностей Video/User
