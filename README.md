@@ -2,6 +2,35 @@
 
 Бэкенд приложения (новости и видео): Java 21, Spring Boot 4.0.5, PostgreSQL, MinIO, JWT.
 
+## Архитектура
+
+Stateless модульный монолит с проверяемыми ArchUnit-границами
+(`ModuleBoundariesTest`). Модули:
+
+```
+config/util/exception   ← база
+auth                    ← пользователи, JWT; базовый модуль, не зависит от feature-модулей
+security                ← адаптер безопасности над auth
+media                   ← объектное хранилище (MinIO) и очередь задач
+news → auth, media, video
+video → auth, media
+account → auth, news, video, media   ← листовой оркестратор удаления аккаунта
+```
+
+Граф модулей ацикличен, что проверяет ArchUnit (`ModuleBoundariesTest`).
+Две потенциальные петли разорваны:
+
+- **`video → news`** — ссылки на удаляемое видео снимаются событием
+  `VideoDeletedEvent` (слушатель `NewsService.onVideoDeleted`), а не прямым
+  вызовом `NewsRepository` из video;
+- **`media → video`** — очередь задач работает через порт `MediaJobHandler`;
+  генерация превью реализована в `video` (`VideoThumbnailJobHandler`), поэтому
+  media ничего не знает о `Video`/`VideoRepository`.
+
+Удаление аккаунта вынесено из `auth.UserService` в отдельный модуль `account`
+(`AccountDeletionService` + `AccountController`): это оркестрация данных
+нескольких bounded context, а не часть профиля.
+
 ## Требования
 
 - JDK 21
@@ -14,7 +43,12 @@ Gradle ставить не нужно, используется wrapper — `./g
 | Тип | Где лежат | Суффикс | Что нужно | Команда |
 |-----|-----------|---------|-----------|---------|
 | Юнит-тесты | `src/test/java` | `*Test` | ничего | `./gradlew test` |
+| Архитектурные | `src/test/java` (`architecture/`) | `*Test` | ничего | `./gradlew test` |
 | Интеграционные | `src/integrationTest/java` | `*IT` | Docker | `./gradlew integrationTest` |
+| Гейт покрытия | — | — | Docker | `./gradlew jacocoTestCoverageVerification` |
+
+Покрытие строк — не ниже 70% (JaCoCo), отчёт объединяет unit- и
+integration-тесты.
 
 Интеграционные тесты поднимают полный Spring-контекст с MockMvc (реальные security-фильтры)
 и подключаются к реальному PostgreSQL в контейнере (`postgres:17-alpine`).

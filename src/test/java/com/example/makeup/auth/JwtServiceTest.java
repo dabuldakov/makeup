@@ -1,4 +1,4 @@
-package com.example.makeup.security;
+package com.example.makeup.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

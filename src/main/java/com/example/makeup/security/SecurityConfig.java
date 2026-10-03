@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.example.makeup.auth.CustomUserDetailsService;
 import com.example.makeup.config.RequestLoggingFilter;
 @Configuration
 @EnableWebSecurity

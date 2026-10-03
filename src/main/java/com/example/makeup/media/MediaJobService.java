@@ -24,12 +24,12 @@ public class MediaJobService {
     private final MediaJobProcessor mediaJobProcessor;
     private final PlatformTransactionManager transactionManager;
 
-    public void enqueue(Long videoId) {
+    public void enqueue(Long targetId) {
         mediaJobRepository.save(MediaJob.builder()
-                .videoId(videoId)
+                .targetId(targetId)
                 .type(MediaJobType.THUMBNAIL)
                 .build());
-        log.info("Enqueued THUMBNAIL media job for video {}", videoId);
+        log.info("Enqueued THUMBNAIL media job for target {}", targetId);
     }
 
     public int processPendingBatch(int limit) {

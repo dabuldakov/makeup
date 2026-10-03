@@ -3,9 +3,9 @@ package com.example.makeup.video;
 import com.example.makeup.media.BucketType;
 import com.example.makeup.auth.User;
 import com.example.makeup.exception.NotFoundException;
-import com.example.makeup.news.NewsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,10 +29,10 @@ public class VideoService {
 
     private final VideoRepository videoRepository;
     private final VideoLikeRepository videoLikeRepository;
-    private final NewsRepository newsRepository;
     private final MinioService minioService;
     private final UserService userService;
     private final MediaJobService mediaJobService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Video uploadVideo(MultipartFile file, String title, String description,
@@ -185,7 +185,9 @@ public class VideoService {
             throw new AccessDeniedException("Only the uploader can delete this video");
         }
 
-        newsRepository.detachVideo(id);
+        // Ссылки других модулей (новости) снимаются синхронным слушателем ещё
+        // в этой транзакции — до DELETE, который иначе упрётся в FK RESTRICT.
+        eventPublisher.publishEvent(new VideoDeletedEvent(id));
 
         if (video.getThumbnailKey() != null && !video.getThumbnailKey().isBlank()) {
             minioService.deleteThumbnail(video.getThumbnailKey());

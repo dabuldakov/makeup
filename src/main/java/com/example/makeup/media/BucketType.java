@@ -1,6 +1,5 @@
 package com.example.makeup.media;
 
-import com.example.makeup.video.Video;
 
 public enum BucketType {
     VIDEOS("videos", "Video bucket"),

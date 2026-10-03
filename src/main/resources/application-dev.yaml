@@ -26,5 +26,5 @@ minio:
 
 logging:
   level:
-    com.example.videostreaming: DEBUG
+    com.example.makeup: DEBUG
     org.springframework.security: DEBUG

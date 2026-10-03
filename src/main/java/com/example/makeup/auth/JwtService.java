@@ -1,4 +1,4 @@
-package com.example.makeup.security;
+package com.example.makeup.auth;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -16,11 +16,11 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    private final com.example.makeup.security.JwtConfig jwtConfig;
+    private final com.example.makeup.auth.JwtConfig jwtConfig;
 
     private final Key signInKey;
 
-    public JwtService(com.example.makeup.security.JwtConfig jwtConfig) {
+    public JwtService(com.example.makeup.auth.JwtConfig jwtConfig) {
         this.jwtConfig = jwtConfig;
         this.signInKey = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes());
     }

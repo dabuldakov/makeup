@@ -20,7 +20,6 @@ import java.io.InputStream;
 import java.util.Map;
 import javax.imageio.ImageIO;
 
-import com.example.makeup.video.Video;
 @Service
 @RequiredArgsConstructor
 @Slf4j

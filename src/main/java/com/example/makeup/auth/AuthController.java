@@ -1,6 +1,6 @@
 package com.example.makeup.auth;
 
-import com.example.makeup.security.JwtService;
+import com.example.makeup.auth.JwtService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

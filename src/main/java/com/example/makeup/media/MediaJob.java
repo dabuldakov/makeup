@@ -32,8 +32,12 @@ public class MediaJob {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Идентификатор цели задачи в доменном модуле. Для THUMBNAIL — id видео.
+     * Имя колонки сохранено историческим (video_id), чтобы не мигрировать схему.
+     */
     @Column(name = "video_id", nullable = false)
-    private Long videoId;
+    private Long targetId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

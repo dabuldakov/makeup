@@ -1,4 +1,4 @@
-package com.example.makeup.security;
+package com.example.makeup.auth;
 
 import com.example.makeup.auth.User;
 import com.example.makeup.auth.UserRepository;

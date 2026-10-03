@@ -31,6 +31,9 @@ jobs:
       - name: Интеграционные тесты
         run: ./gradlew --no-daemon integrationTest
 
+      - name: Гейт покрытия
+        run: ./gradlew --no-daemon jacocoTestCoverageVerification
+
   deploy:
     name: Deploy on VPS
     needs: test

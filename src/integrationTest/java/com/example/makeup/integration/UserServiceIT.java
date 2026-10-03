@@ -2,7 +2,7 @@ package com.example.makeup.integration;
 
 import com.example.makeup.auth.RegisterRequest;
 import com.example.makeup.auth.User;
-import com.example.makeup.security.JwtService;
+import com.example.makeup.auth.JwtService;
 import com.example.makeup.auth.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

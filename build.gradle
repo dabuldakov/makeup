@@ -1,5 +1,6 @@
 plugins {
 	id 'java'
+	id 'jacoco'
 	id 'org.springframework.boot' version '4.0.5'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -55,6 +56,9 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers:1.21.4'
 	testImplementation 'org.testcontainers:postgresql:1.21.4'
 	testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
+
+	// ArchUnit — проверка границ модулей
+	testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 }
 
 tasks.named('test') {
@@ -84,4 +88,38 @@ tasks.register('integrationTest', Test) {
 	useJUnitPlatform()
 	include '**/*IT.class'
 	failOnNoDiscoveredTests = true
+}
+
+jacoco {
+	toolVersion = '0.8.12'
+}
+
+// Отчёт объединяет unit- и integration-тесты.
+jacocoTestReport {
+	dependsOn test, integrationTest
+	reports {
+		xml.required = true
+		html.required = true
+	}
+	executionData.setFrom(
+			fileTree(buildDir).include(
+					'jacoco/test.exec',
+					'jacoco/integrationTest.exec'
+			)
+	)
+}
+
+jacocoTestCoverageVerification {
+	dependsOn jacocoTestReport
+	executionData.setFrom(jacocoTestReport.executionData)
+	violationRules {
+		rule {
+			element = 'BUNDLE'
+			limit {
+				counter = 'LINE'
+				value = 'COVEREDRATIO'
+				minimum = 0.70
+			}
+		}
+	}
 }

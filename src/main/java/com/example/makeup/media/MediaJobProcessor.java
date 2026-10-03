@@ -1,36 +1,39 @@
 package com.example.makeup.media;
 
-import com.example.makeup.video.Video;
-import com.example.makeup.video.VideoStatus;
-import com.example.makeup.video.VideoRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.awt.image.BufferedImage;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.UUID;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Обработка одной задачи медиа в отдельной транзакции. Воркер вызывает этот
  * бин (а не сам себя), чтобы {@link Transactional} применялся и «долгий» ffmpeg
  * не держал транзакцию claim-а.
+ *
+ * <p>Процессор отвечает только за жизненный цикл задачи (попытки, статусы), а
+ * конкретную работу выполняет {@link MediaJobHandler}, найденный по типу задачи.
+ * Так медиа-модуль не зависит от доменных (video).
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class MediaJobProcessor {
 
     private static final int MAX_ATTEMPTS = 3;
 
     private final MediaJobRepository mediaJobRepository;
-    private final VideoRepository videoRepository;
-    private final MinioService minioService;
-    private final ThumbnailGeneratorService thumbnailGeneratorService;
+    private final Map<MediaJobType, MediaJobHandler> handlers;
+
+    public MediaJobProcessor(MediaJobRepository mediaJobRepository, List<MediaJobHandler> handlers) {
+        this.mediaJobRepository = mediaJobRepository;
+        Map<MediaJobType, MediaJobHandler> byType = new EnumMap<>(MediaJobType.class);
+        for (MediaJobHandler handler : handlers) {
+            byType.put(handler.type(), handler);
+        }
+        this.handlers = byType;
+    }
 
     @Transactional
     public void process(Long jobId) {
@@ -39,40 +42,26 @@ public class MediaJobProcessor {
             return;
         }
 
-        Path temp = null;
+        MediaJobHandler handler = handlers.get(job.getType());
         try {
-            Video video = videoRepository.findById(job.getVideoId())
-                    .orElseThrow(() -> new IllegalStateException("Video not found: " + job.getVideoId()));
-
-            temp = Files.createTempFile("video_", ".mp4");
-            try (InputStream in = minioService.getVideoFile(video.getObjectKey()).getInputStream()) {
-                Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
+            if (handler == null) {
+                throw new IllegalStateException("No handler for media job type: " + job.getType());
             }
-
-            BufferedImage thumbnail = thumbnailGeneratorService.generateThumbnail(temp);
-            String thumbnailKey = minioService.uploadThumbnail(thumbnail, UUID.randomUUID().toString());
-
-            videoRepository.updateThumbnailAndStatus(video.getId(), thumbnailKey, VideoStatus.PUBLISHED);
+            handler.handle(job);
 
             job.setStatus(MediaJobStatus.DONE);
             job.setLastError(null);
-            log.info("Thumbnail attached to video {}: {}", video.getId(), thumbnailKey);
+            log.info("Media job {} done", jobId);
         } catch (Exception e) {
             log.warn("Media job {} failed (attempt {}): {}", jobId, job.getAttempts(), e.getMessage());
             job.setLastError(truncate(e.getMessage()));
             if (job.getAttempts() >= MAX_ATTEMPTS) {
                 job.setStatus(MediaJobStatus.FAILED);
-                videoRepository.updateStatus(job.getVideoId(), VideoStatus.FAILED);
+                if (handler != null) {
+                    handler.onPermanentFailure(job);
+                }
             } else {
                 job.setStatus(MediaJobStatus.PENDING);
-            }
-        } finally {
-            if (temp != null) {
-                try {
-                    Files.deleteIfExists(temp);
-                } catch (Exception e) {
-                    log.warn("Failed to delete temp video file: {}", temp, e);
-                }
             }
         }
 

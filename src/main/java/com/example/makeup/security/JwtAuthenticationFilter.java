@@ -16,6 +16,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+import com.example.makeup.auth.CustomUserDetailsService;
+import com.example.makeup.auth.JwtService;
 @Component
 @RequiredArgsConstructor
 @Slf4j

@@ -31,14 +31,6 @@ public class UserController {
         return ResponseEntity.ok(toResponseDto(userService.updateUser(id, request)));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAccount(
-            @PathVariable Long id,
-            Authentication authentication) {
-        userService.deleteAccount(id, authentication.getName());
-        return ResponseEntity.noContent().build();
-    }
-
     private UserResponse toResponseDto(User user) {
         return UserResponse.builder()
                 .id(user.getId())

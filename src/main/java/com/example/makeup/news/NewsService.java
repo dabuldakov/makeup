@@ -4,6 +4,7 @@ import com.example.makeup.media.BucketType;
 import com.example.makeup.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 import com.example.makeup.auth.UserService;
 import com.example.makeup.media.MinioService;
+import com.example.makeup.video.VideoDeletedEvent;
 import com.example.makeup.video.VideoService;
 @Service
 @RequiredArgsConstructor
@@ -36,6 +38,17 @@ public class NewsService {
     public NewsItem getNewsById(Long id) {
         return newsRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException("News not found"));
+    }
+
+    /**
+     * Снимает ссылку на удаляемое видео. Слушатель живёт на стороне новостей,
+     * поэтому video-модуль не зависит от news. Событие синхронное и приходит
+     * в транзакции удаления — отвязка происходит до DELETE видео (FK RESTRICT).
+     */
+    @EventListener
+    @Transactional
+    public void onVideoDeleted(VideoDeletedEvent event) {
+        newsRepository.detachVideo(event.videoId());
     }
 
     @Transactional

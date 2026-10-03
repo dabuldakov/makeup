@@ -1,7 +1,7 @@
 package com.example.makeup.integration;
 
 import com.example.makeup.auth.User;
-import com.example.makeup.auth.UserService;
+import com.example.makeup.account.AccountDeletionService;
 import com.example.makeup.news.NewsRepository;
 import com.example.makeup.news.NewsService;
 import com.example.makeup.video.VideoLikeRepository;
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserAccountDeletionIT extends AbstractIntegrationTest {
 
     @Autowired
-    private UserService userService;
+    private AccountDeletionService deletionService;
 
     @Autowired
     private VideoService videoService;
@@ -67,7 +67,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         newsService.createNews("News title", "News body", null, user.getUsername(), image());
         newsService.createNews("Second news", "body", null, user.getUsername(), null);
 
-        userService.deleteAccount(user.getId(), user.getUsername());
+        deletionService.deleteAccount(user.getId(), user.getUsername());
 
         assertThat(userRepository.findById(user.getId())).isEmpty();
         assertThat(videoRepository.findAll()).isEmpty();
@@ -82,7 +82,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
 
         String newsImageKey = newsRepository.findAll().get(0).getImageKey();;
 
-        userService.deleteAccount(user.getId(), user.getUsername());
+        deletionService.deleteAccount(user.getId(), user.getUsername());
 
         verify(minioService).deleteVideo(video.getObjectKey());
         verify(minioService).deleteThumbnail(video.getThumbnailKey());
@@ -98,7 +98,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         videoService.toggleLike(video.getId(), leaver.getUsername());
         assertThat(videoRepository.findById(video.getId()).orElseThrow().getLikesCount()).isEqualTo(1L);
 
-        userService.deleteAccount(leaver.getId(), leaver.getUsername());
+        deletionService.deleteAccount(leaver.getId(), leaver.getUsername());
 
         assertThat(videoLikeRepository.findVideoIdsByUserId(leaver.getId())).isEmpty();
         assertThat(videoRepository.findById(video.getId()).orElseThrow().getLikesCount()).isZero();
@@ -111,7 +111,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         videoService.uploadVideo(videoFile(), "Stays", "d", null, owner.getUsername());
         newsService.createNews("Stays too", "body", null, owner.getUsername(), null);
 
-        userService.deleteAccount(leaver.getId(), leaver.getUsername());
+        deletionService.deleteAccount(leaver.getId(), leaver.getUsername());
 
         assertThat(videoRepository.findAll()).hasSize(1);
         assertThat(newsRepository.findAll()).hasSize(1);
@@ -123,7 +123,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         User victim = createUser("victim");
         User attacker = createUser("attacker");
 
-        assertThatThrownBy(() -> userService.deleteAccount(victim.getId(), attacker.getUsername()))
+        assertThatThrownBy(() -> deletionService.deleteAccount(victim.getId(), attacker.getUsername()))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
 
         assertThat(userRepository.findById(victim.getId())).isPresent();
@@ -139,7 +139,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         User admin = createAdmin("root");
         User attacker = createUser("attacker3");
 
-        assertThatThrownBy(() -> userService.deleteAccount(admin.getId(), attacker.getUsername()))
+        assertThatThrownBy(() -> deletionService.deleteAccount(admin.getId(), attacker.getUsername()))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
 
         assertThat(userRepository.findById(admin.getId())).isPresent();
@@ -150,7 +150,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         User admin = createAdmin("admin-del");
         User victim = createUser("victim3");
 
-        userService.deleteAccount(victim.getId(), admin.getUsername());
+        deletionService.deleteAccount(victim.getId(), admin.getUsername());
 
         assertThat(userRepository.findById(victim.getId())).isEmpty();
         assertThat(userRepository.findById(admin.getId())).isPresent();
@@ -161,7 +161,7 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         User user = createUser("cached");
         assertThat(loadUser("cached")).isNotNull();
 
-        userService.deleteAccount(user.getId(), user.getUsername());
+        deletionService.deleteAccount(user.getId(), user.getUsername());
 
         assertThatThrownBy(() -> loadUser("cached"))
                 .isInstanceOf(org.springframework.security.core.userdetails.UsernameNotFoundException.class);
