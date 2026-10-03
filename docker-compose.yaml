@@ -75,7 +75,11 @@ services:
       - minio
       - redis
     networks:
-      - makeup-network
+      # Уникальный алиас — в общей сети MinIO есть и app от chat с тем же именем
+      # `app`, из-за чего upstream резолвился в оба контейнера.
+      makeup-network:
+        aliases:
+          - makeup-app
     extra_hosts:
       - "90.188.89.63:host-gateway"
 
@@ -86,7 +90,9 @@ services:
     ports:
       - "8085:80"
     volumes:
-      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Монтируем каталог, а не файл: bind-mount файла держит inode, и замена
+      # файла (sed -i / git reset) не видна контейнеру до пересоздания.
+      - ./deploy:/etc/nginx/conf.d:ro
     depends_on:
       - app
     networks:
