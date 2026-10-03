@@ -33,7 +33,10 @@ services:
     volumes:
       - minio_data:/data
     networks:
+      # MinIO отдаётся и в свою сеть (app makeup), и в нейтральную общую
+      # (chat подключается к ней, не заходя в сеть makeup).
       - makeup-network
+      - shared-minio
 
   redis:
     image: redis:7-alpine
@@ -101,6 +104,11 @@ services:
 networks:
   makeup-network:
     driver: bridge
+  # Нейтральная сеть для общего объектного хранилища. Создаётся один раз на
+  # хосте (deploy это делает) и разделяется с chat без алиасов-коллизий.
+  shared-minio:
+    external: true
+    name: shared-minio
 
 volumes:
   postgres_data:
