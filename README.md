@@ -31,6 +31,35 @@ account → auth, news, video, media   ← листовой оркестрато
 (`AccountDeletionService` + `AccountController`): это оркестрация данных
 нескольких bounded context, а не часть профиля.
 
+## Горизонтальное масштабирование
+
+Несколько нод работают с **одной общей БД** и общим MinIO. Приложение stateless
+(JWT, файлы в MinIO), sticky sessions не нужны. Что учитывается:
+
+- **Кеш пользователей** (`CustomUserDetailsService`) — по умолчанию локальный
+  Caffeine. При нескольких нодах включается общий **Redis**
+  (`app.cache.redis.enabled=true`, `REDIS_HOST`/`REDIS_PORT`): иначе инвалидация
+  при смене профиля/роли не видна другим инстансам.
+- **Фоновые задачи** (`MediaJobScheduler`) уже безопасны для нескольких воркеров:
+  задачи берутся из `media_jobs` через `FOR UPDATE SKIP LOCKED`. Ноду можно
+  вывести из обработки, выставив `media.jobs.scheduler.enabled=false`.
+- **Flyway** берёт advisory-lock и накатывает миграции один раз; для лишних нод
+  можно выставить `SPRING_FLYWAY_ENABLED=false`.
+- **Пул БД** (`hikari.maximum-pool-size`) умножается на число нод; при росте —
+  PgBouncer и/или read-реплики для чтения лент.
+
+`docker-compose.yaml` готов к масштабированию: `app` не публикует порт, наружу
+смотрит `nginx` (порт `8085`) и балансирует реплики (понимает большие загрузки
+видео и Range-стриминг).
+
+```bash
+docker compose up -d --scale app=3      # 3 реплики
+# или постоянно: APP_REPLICAS=3 в .env
+```
+
+Одна общая БД — это масштабирование. Своя БД у каждого — это отдельный
+независимый инстанс.
+
 ## Требования
 
 - JDK 21
@@ -116,6 +145,9 @@ docker-compose up          # PostgreSQL + MinIO
 | `APP_PUBLIC_BASE_URL` | базовый URL для абсолютных ссылок на превью/картинки | `http://localhost:8080`, в prod `http://90.188.89.63:8085` |
 | `APP_CORS_ALLOWED_ORIGINS` | список origin-паттернов через запятую | `http://localhost:*` |
 | `POSTGRES_*`, `MINIO_*` | доступ к БД и объектному хранилищу | — |
+| `APP_CACHE_REDIS_ENABLED` | общий Redis-кеш вместо локального Caffeine | `false` (в `prod` — `true`) |
+| `REDIS_HOST` / `REDIS_PORT` | адрес Redis | `redis:6379` |
+| `APP_REPLICAS` | число реплик `app` в compose | `1` |
 
 Публичные `GET /api/news/**` и `GET /api/videos/**` не требуют токена, загрузка/изменение — требуют.
 

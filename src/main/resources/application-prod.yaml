@@ -3,6 +3,10 @@ spring:
     url: ${POSTGRES_URL}
     username: ${POSTGRES_USERNAME}
     password: ${POSTGRES_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
   jpa:
     hibernate:
       ddl-auto: none
@@ -23,6 +27,10 @@ jwt:
 
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://90.188.89.63:8085}
+  cache:
+    redis:
+      # Несколько нод должны видеть общий кеш; отключается APP_CACHE_REDIS_ENABLED=false.
+      enabled: ${APP_CACHE_REDIS_ENABLED:true}
 
 server:
   error:

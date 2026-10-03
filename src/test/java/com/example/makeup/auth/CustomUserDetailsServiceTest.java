@@ -1,6 +1,7 @@
 package com.example.makeup.auth;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Optional;
@@ -15,7 +16,8 @@ import static org.mockito.Mockito.when;
 class CustomUserDetailsServiceTest {
 
     private final UserRepository repository = mock(UserRepository.class);
-    private final CustomUserDetailsService service = new CustomUserDetailsService(repository);
+    private final CustomUserDetailsService service =
+            new CustomUserDetailsService(repository, new ConcurrentMapCacheManager("users"));
 
     @Test
     void loadsUserAndCachesIt() {

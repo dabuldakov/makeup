@@ -41,7 +41,9 @@ dependencies {
 
 	// Utilities
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	// Кеш: Caffeine (dev, одна нода) и Redis (prod, несколько нод)
 	implementation 'com.github.ben-manes.caffeine:caffeine'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
