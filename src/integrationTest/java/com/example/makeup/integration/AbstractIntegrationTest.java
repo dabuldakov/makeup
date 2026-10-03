@@ -7,6 +7,7 @@ import com.example.makeup.auth.UserRepository;
 import com.example.makeup.media.MinioService;
 import com.example.makeup.media.ThumbnailGeneratorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.minio.StatObjectResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -113,8 +115,15 @@ public abstract class AbstractIntegrationTest {
                 new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3}))
         );
         when(minioService.getVideoFile(any())).thenReturn(
-                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3}))
+                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3, 4}))
         );
+        when(minioService.getVideoFile(anyString(), anyLong(), anyLong())).thenReturn(
+                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3, 4}))
+        );
+        StatObjectResponse videoStat = mock(StatObjectResponse.class);
+        when(videoStat.size()).thenReturn(4L);
+        when(videoStat.contentType()).thenReturn("video/mp4");
+        when(minioService.statVideo(anyString())).thenReturn(videoStat);
         when(minioService.getVideoPresignedUrl(any())).thenReturn("http://localhost:9000/presigned/video");
         when(minioService.getThumbnailPresignedUrl(any())).thenReturn("http://localhost:9000/presigned/thumbnail");
     }

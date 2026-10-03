@@ -9,6 +9,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -102,6 +103,76 @@ class VideoControllerIT extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/videos/stream/" + fileName)
                         .header("Authorization", BEARER + token))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void streamVideoFullRequestAdvertisesAcceptRanges() throws Exception {
+        String token = registerUser("range-author-full");
+        long id = upload(token, "Full range");
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
+
+        mockMvc.perform(get("/api/videos/stream/" + fileName)
+                        .header("Authorization", BEARER + token))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Accept-Ranges", "bytes"))
+                .andExpect(header().longValue("Content-Length", 4))
+                .andExpect(header().string("Content-Type", "video/mp4"));
+    }
+
+    @Test
+    void streamVideoSupportsByteRange() throws Exception {
+        String token = registerUser("range-author-1");
+        long id = upload(token, "Byte range");
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
+
+        mockMvc.perform(get("/api/videos/stream/" + fileName)
+                        .header("Authorization", BEARER + token)
+                        .header("Range", "bytes=0-1"))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string("Accept-Ranges", "bytes"))
+                .andExpect(header().string("Content-Range", "bytes 0-1/4"))
+                .andExpect(header().longValue("Content-Length", 2));
+    }
+
+    @Test
+    void streamVideoSupportsSuffixRange() throws Exception {
+        String token = registerUser("range-author-2");
+        long id = upload(token, "Suffix range");
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
+
+        mockMvc.perform(get("/api/videos/stream/" + fileName)
+                        .header("Authorization", BEARER + token)
+                        .header("Range", "bytes=-2"))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string("Content-Range", "bytes 2-3/4"))
+                .andExpect(header().longValue("Content-Length", 2));
+    }
+
+    @Test
+    void streamVideoOpenEndedRangeReturnsToEnd() throws Exception {
+        String token = registerUser("range-author-3");
+        long id = upload(token, "Open range");
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
+
+        mockMvc.perform(get("/api/videos/stream/" + fileName)
+                        .header("Authorization", BEARER + token)
+                        .header("Range", "bytes=2-"))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string("Content-Range", "bytes 2-3/4"))
+                .andExpect(header().longValue("Content-Length", 2));
+    }
+
+    @Test
+    void streamVideoUnsatisfiableRangeReturns416() throws Exception {
+        String token = registerUser("range-author-4");
+        long id = upload(token, "Bad range");
+        String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
+
+        mockMvc.perform(get("/api/videos/stream/" + fileName)
+                        .header("Authorization", BEARER + token)
+                        .header("Range", "bytes=100-200"))
+                .andExpect(status().isRequestedRangeNotSatisfiable())
+                .andExpect(header().string("Content-Range", "bytes */4"));
     }
 
     @Test

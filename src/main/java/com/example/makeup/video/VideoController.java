@@ -5,6 +5,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -64,13 +65,59 @@ public class VideoController {
         return ResponseEntity.ok(Map.of("liked", false, "likes", likes));
     }
 
+    /**
+     * Отдача видеофайла с поддержкой HTTP Range.
+     *
+     * Плееру (ExoPlayer) нужна докачка по диапазонам: без неё для MP4 с
+     * moov-атомом в конце приходится качать весь файл, и воспроизведение
+     * «висит». Поэтому при заголовке {@code Range} отдаём 206 с Content-Range,
+     * а в обычном ответе сообщаем Accept-Ranges: bytes.
+     */
     @GetMapping("/stream/{fileName}")
-    public ResponseEntity<Resource> streamVideo(@PathVariable String fileName) {
-        Resource resource = videoService.getVideoFile(fileName);
-        return ResponseEntity.ok()
+    public ResponseEntity<Resource> streamVideo(
+            @PathVariable String fileName,
+            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader
+    ) {
+        VideoFileInfo info = videoService.getVideoFileInfo(fileName);
+        long fileSize = info.size();
+        MediaType contentType = MediaType.parseMediaType(
+                info.contentType() != null && !info.contentType().isBlank()
+                        ? info.contentType()
+                        : MediaType.APPLICATION_OCTET_STREAM_VALUE
+        );
+
+        ByteRange range;
+        try {
+            range = RangeHeader.parse(rangeHeader, fileSize);
+        } catch (RangeHeader.RangeNotSatisfiableException e) {
+            return rangeNotSatisfiable(fileSize);
+        }
+
+        if (range == null) {
+            Resource resource = videoService.getVideoFile(fileName, 0, -1);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .contentLength(fileSize)
+                    .contentType(contentType)
+                    .body(resource);
+        }
+
+        Resource resource = videoService.getVideoFile(fileName, range.start(), range.length());
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_RANGE, range.contentRangeHeader(fileSize))
+                .contentLength(range.length())
+                .contentType(contentType)
                 .body(resource);
+    }
+
+    private ResponseEntity<Resource> rangeNotSatisfiable(long fileSize) {
+        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CONTENT_RANGE, "bytes */" + fileSize)
+                .build();
     }
 
     @GetMapping("/thumbnail/{fileName}")

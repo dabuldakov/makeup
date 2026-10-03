@@ -185,13 +185,29 @@ public class MinioService {
      * Получение видео файла из MinIO
      */
     public Resource getVideoFile(String fileName) {
+        return getVideoFile(fileName, 0, -1);
+    }
+
+    /**
+     * Получение видео файла (или его части) из MinIO.
+     *
+     * {@code offset} и {@code length} позволяют отдать конкретный диапазон байт,
+     * что необходимо для HTTP Range: ExoPlayer и другие плееры запрашивают
+     * отдельные фрагменты (например, чтобы дочитать moov-атом MP4).
+     * {@code length < 0} означает «до конца объекта».
+     */
+    public Resource getVideoFile(String fileName, long offset, long length) {
         try {
-            InputStream stream = minioClient.getObject(
-                    GetObjectArgs.builder()
-                            .bucket(videoBucketName)
-                            .object(fileName)
-                            .build()
-            );
+            GetObjectArgs.Builder builder = GetObjectArgs.builder()
+                    .bucket(videoBucketName)
+                    .object(fileName);
+            if (offset > 0) {
+                builder.offset(offset);
+            }
+            if (length > 0) {
+                builder.length(length);
+            }
+            InputStream stream = minioClient.getObject(builder.build());
             return new InputStreamResource(stream);
         } catch (ErrorResponseException e) {
             if ("NoSuchKey".equals(e.errorResponse().code())) {
@@ -203,6 +219,30 @@ public class MinioService {
         } catch (Exception e) {
             log.error("Failed to get video file: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to get video file", e);
+        }
+    }
+
+    /**
+     * Метаданные видео объекта (размер, content-type) для HTTP Range.
+     */
+    public StatObjectResponse statVideo(String fileName) {
+        try {
+            return minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(videoBucketName)
+                            .object(fileName)
+                            .build()
+            );
+        } catch (ErrorResponseException e) {
+            if ("NoSuchKey".equals(e.errorResponse().code())) {
+                log.warn("Video file not found in bucket '{}': {}", videoBucketName, fileName);
+                throw new NotFoundException("Video file not found: " + fileName);
+            }
+            log.error("Failed to stat video file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to stat video file", e);
+        } catch (Exception e) {
+            log.error("Failed to stat video file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to stat video file", e);
         }
     }
 

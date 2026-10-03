@@ -92,6 +92,18 @@ public class VideoService {
         return minioService.getVideoFile(objectKey);
     }
 
+    public Resource getVideoFile(String objectKey, long offset, long length) {
+        return minioService.getVideoFile(objectKey, offset, length);
+    }
+
+    /**
+     * Размер и content-type объекта видео — для заголовков HTTP Range.
+     */
+    public VideoFileInfo getVideoFileInfo(String objectKey) {
+        io.minio.StatObjectResponse stat = minioService.statVideo(objectKey);
+        return new VideoFileInfo(stat.size(), stat.contentType());
+    }
+
     public String getVideoUrl(String objectKey) {
         return minioService.getVideoPresignedUrl(objectKey);
     }
