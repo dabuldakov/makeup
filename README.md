@@ -60,9 +60,10 @@ docker compose up -d --scale app=3      # 3 реплики
 Одна общая БД — это масштабирование. Своя БД у каждого — это отдельный
 независимый инстанс.
 
-MinIO отдаётся ещё и в нейтральную внешнюю сеть **`shared-minio`**, к которой
-подключается chat для доступа к общему хранилищу (создаётся в deploy). Так chat
-не заходит в сеть makeup и нет коллизий сетевых алиасов.
+MinIO вынесен в **отдельный проект** [`shared-minio`](https://github.com/dabuldakov/shared-minio):
+это самостоятельный compose-сервис на нейтральной внешней сети **`shared-minio`**,
+к которой подключаются и makeup, и chat (сеть создаётся в deploy). Так приложения
+не заходят в сети друг друга и нет коллизий сетевых алиасов.
 
 ## Требования
 
@@ -132,12 +133,19 @@ MinIO и генерация превью замоканы (`@MockitoBean`), по
 ## Запуск приложения
 
 ```bash
-docker-compose up          # PostgreSQL + MinIO
+docker-compose up          # PostgreSQL + Redis (+ nginx)
 ./gradlew bootRun
 ```
 
-- MinIO WebUI: http://127.0.0.1:9001
 - API: http://localhost:8080
+
+MinIO — отдельный сервис (`shared-minio`), запускается там же:
+
+```bash
+cd ../shared-minio
+docker network create shared-minio   # один раз
+docker compose up -d                 # MinIO WebUI: http://127.0.0.1:9001
+```
 
 ## Конфигурация
 
@@ -168,13 +176,14 @@ src/integrationTest/resources/application-integration-test.yaml
 
 ## Автодеплой
 
-При push в `main` GitHub Actions по SSH заходит на VPS, обновляет чекаут и пересобирает
-только сервис `app` (PostgreSQL и MinIO не трогаются):
+При push в `main` GitHub Actions по SSH заходит на VPS, обновляет чекаут,
+создаёт сеть `shared-minio` и пересобирает сервисы:
 
 ```bash
-cd "$DEPLOY_PATH"                      # например, /opt/makeup
+cd "$DEPLOY_PATH"                      # например, /root/makeup-backend
 git fetch --prune origin main && git reset --hard origin/main
-docker compose up -d --build app
+docker network create shared-minio 2>/dev/null || true
+docker compose up -d --build
 ```
 
 Workflow — `.github/workflows/deploy.yml` (можно запустить вручную: Actions → deploy → Run workflow).

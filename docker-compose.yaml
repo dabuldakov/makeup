@@ -17,26 +17,8 @@ services:
     networks:
       - makeup-network
 
-  minio:
-    image: minio/minio:latest
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_DOMAIN: ${MINIO_HOST}
-    env_file:
-      - .env
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-    volumes:
-      - minio_data:/data
-    networks:
-      # MinIO отдаётся и в свою сеть (app makeup), и в нейтральную общую
-      # (chat подключается к ней, не заходя в сеть makeup).
-      - makeup-network
-      - shared-minio
+  # MinIO вынесен в отдельный проект shared-minio (см. репозиторий shared-minio);
+  # app подключается к нему через внешнюю сеть shared-minio.
 
   redis:
     image: redis:7-alpine
@@ -75,14 +57,14 @@ services:
       - .env
     depends_on:
       - postgres
-      - minio
       - redis
     networks:
-      # Уникальный алиас — в общей сети MinIO есть и app от chat с тем же именем
-      # `app`, из-за чего upstream резолвился в оба контейнера.
+      # Уникальный алиас — на общей сети есть app от chat с тем же именем `app`.
       makeup-network:
         aliases:
           - makeup-app
+      # Общий MinIO живёт в этой сети (отдельный проект shared-minio).
+      shared-minio:
     extra_hosts:
       - "90.188.89.63:host-gateway"
 
@@ -112,4 +94,3 @@ networks:
 
 volumes:
   postgres_data:
-  minio_data:
