@@ -3,8 +3,9 @@ package com.example.makeup.video;
 import com.example.makeup.media.MediaJob;
 import com.example.makeup.media.MediaJobHandler;
 import com.example.makeup.media.MediaJobType;
-import com.example.makeup.media.MinioService;
 import com.example.makeup.media.ThumbnailGeneratorService;
+import com.example.makeup.media.ThumbnailStorage;
+import com.example.makeup.media.VideoStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,7 +27,8 @@ import java.util.UUID;
 public class VideoThumbnailJobHandler implements MediaJobHandler {
 
     private final VideoRepository videoRepository;
-    private final MinioService minioService;
+    private final VideoStorage videoStorage;
+    private final ThumbnailStorage thumbnailStorage;
     private final ThumbnailGeneratorService thumbnailGeneratorService;
 
     @Override
@@ -41,12 +43,12 @@ public class VideoThumbnailJobHandler implements MediaJobHandler {
 
         Path temp = Files.createTempFile("video_", ".mp4");
         try {
-            try (InputStream in = minioService.getVideoFile(video.getObjectKey()).getInputStream()) {
+            try (InputStream in = videoStorage.get(video.getObjectKey()).getInputStream()) {
                 Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
             }
 
             BufferedImage thumbnail = thumbnailGeneratorService.generateThumbnail(temp);
-            String thumbnailKey = minioService.uploadThumbnail(thumbnail, UUID.randomUUID().toString());
+            String thumbnailKey = thumbnailStorage.upload(thumbnail, UUID.randomUUID().toString());
 
             videoRepository.updateThumbnailAndStatus(video.getId(), thumbnailKey, VideoStatus.PUBLISHED);
             log.info("Thumbnail attached to video {}: {}", video.getId(), thumbnailKey);

@@ -1,6 +1,5 @@
 package com.example.makeup.news;
 
-import com.example.makeup.media.BucketType;
 import com.example.makeup.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +16,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import com.example.makeup.auth.UserService;
-import com.example.makeup.media.MinioService;
+import com.example.makeup.media.NewsImageStorage;
 import com.example.makeup.video.VideoDeletedEvent;
 import com.example.makeup.video.VideoService;
 @Service
@@ -28,7 +27,7 @@ public class NewsService {
     private final NewsRepository newsRepository;
     private final VideoService videoService;
     private final UserService userService;
-    private final MinioService minioService;
+    private final NewsImageStorage newsImageStorage;
 
     public Page<NewsListItem> getAllNews(Pageable pageable) {
         log.debug("Fetching news list (page: {}, size: {})", pageable.getPageNumber(), pageable.getPageSize());
@@ -82,7 +81,7 @@ public class NewsService {
         }
 
         if (news.getImageKey() != null) {
-            minioService.deleteNewsImage(news.getImageKey());
+            newsImageStorage.delete(news.getImageKey());
         }
 
         news.setDeletedAt(LocalDateTime.now(ZoneOffset.UTC));
@@ -91,19 +90,15 @@ public class NewsService {
         log.info("News soft-deleted: id={}, by user={}", id, username);
     }
 
-    public byte[] getImage(String fileName) {
-        return minioService.getImageBytes(fileName, BucketType.NEWS_IMAGE);
-    }
-
     public org.springframework.core.io.Resource getImageFile(String fileName) {
-        return minioService.getImageFile(fileName, BucketType.NEWS_IMAGE);
+        return newsImageStorage.get(fileName);
     }
 
     private void uploadImage(MultipartFile image, NewsItem savedNews) {
         if (image != null && !image.isEmpty()) {
             try {
                 String fileId = UUID.randomUUID().toString();
-                String imageKey = minioService.uploadNewsImage(image, fileId);
+                String imageKey = newsImageStorage.upload(image, fileId);
                 savedNews.setImageKey(imageKey);
                 newsRepository.save(savedNews);
             } catch (Exception e) {

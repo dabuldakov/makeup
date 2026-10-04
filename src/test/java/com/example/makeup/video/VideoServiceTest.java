@@ -2,12 +2,15 @@ package com.example.makeup.video;
 
 import com.example.makeup.auth.User;
 import com.example.makeup.exception.NotFoundException;
-import com.example.makeup.news.NewsRepository;
+import com.example.makeup.media.MediaJobService;
+import com.example.makeup.media.ThumbnailStorage;
+import com.example.makeup.media.VideoStorage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -28,8 +31,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.makeup.auth.UserService;
-import com.example.makeup.media.MediaJobService;
-import com.example.makeup.media.MinioService;
 @ExtendWith(MockitoExtension.class)
 class VideoServiceTest {
 
@@ -40,16 +41,19 @@ class VideoServiceTest {
     private VideoLikeRepository videoLikeRepository;
 
     @Mock
-    private NewsRepository newsRepository;
+    private VideoStorage videoStorage;
 
     @Mock
-    private MinioService minioService;
+    private ThumbnailStorage thumbnailStorage;
 
     @Mock
     private UserService userService;
 
     @Mock
     private MediaJobService mediaJobService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private VideoService videoService;
@@ -60,7 +64,7 @@ class VideoServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "clip.mp4", "video/mp4", new byte[]{1, 2});
 
         when(userService.getUserByUsername("alice")).thenReturn(user);
-        when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
+        when(videoStorage.upload(any(InputStream.class), anyLong(), anyString(), anyString()))
                 .thenReturn("cafe0000.mp4");
         when(videoRepository.save(any(Video.class))).thenAnswer(inv -> {
             Video v = inv.getArgument(0);
@@ -84,9 +88,9 @@ class VideoServiceTest {
                 new MockMultipartFile("thumbnail", "thumb.jpeg", "image/jpeg", new byte[]{3, 4, 5});
 
         when(userService.getUserByUsername("alice")).thenReturn(user);
-        when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
+        when(videoStorage.upload(any(InputStream.class), anyLong(), anyString(), anyString()))
                 .thenReturn("cafe0000.mp4");
-        when(minioService.uploadThumbnail(any(MockMultipartFile.class), anyString()))
+        when(thumbnailStorage.upload(any(MockMultipartFile.class), anyString()))
                 .thenReturn("thumb-uuid.jpeg");
         when(videoRepository.save(any(Video.class))).thenAnswer(inv -> {
             Video v = inv.getArgument(0);
@@ -98,7 +102,7 @@ class VideoServiceTest {
 
         assertEquals("thumb-uuid.jpeg", result.getThumbnailKey());
         assertEquals(VideoStatus.PUBLISHED, result.getStatus());
-        verify(minioService).uploadThumbnail(any(MockMultipartFile.class), anyString());
+        verify(thumbnailStorage).upload(any(MockMultipartFile.class), anyString());
         verify(mediaJobService, never()).enqueue(anyLong());
         verify(videoRepository).save(any(Video.class));
     }
@@ -107,7 +111,7 @@ class VideoServiceTest {
     void uploadVideo_shouldNotSaveWhenUploadFails() {
         MockMultipartFile file = new MockMultipartFile("file", "clip.mp4", "video/mp4", new byte[]{1});
         when(userService.getUserByUsername("alice")).thenReturn(User.builder().id(1L).build());
-        when(minioService.uploadVideo(any(InputStream.class), anyLong(), anyString(), anyString()))
+        when(videoStorage.upload(any(InputStream.class), anyLong(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("minio down"));
 
         assertThrows(RuntimeException.class, () -> videoService.uploadVideo(file, "Title", "Desc", null, "alice"));

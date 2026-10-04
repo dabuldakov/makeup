@@ -134,8 +134,8 @@ class VideoServiceIT extends AbstractIntegrationTest {
         videoService.deleteVideo(video.getId(), author.getUsername());
 
         assertThat(videoRepository.findById(video.getId())).isEmpty();
-        verify(minioService).deleteVideo(saved.getObjectKey());
-        verify(minioService).deleteThumbnail(saved.getThumbnailKey());
+        verify(videoStorage).delete(saved.getObjectKey());
+        verify(thumbnailStorage).delete(saved.getThumbnailKey());
     }
 
     @Test

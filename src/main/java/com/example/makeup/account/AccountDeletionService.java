@@ -6,7 +6,9 @@ import com.example.makeup.auth.UserRepository;
 import com.example.makeup.auth.UserService;
 import com.example.makeup.news.NewsItem;
 import com.example.makeup.news.NewsRepository;
-import com.example.makeup.media.MinioService;
+import com.example.makeup.media.NewsImageStorage;
+import com.example.makeup.media.ThumbnailStorage;
+import com.example.makeup.media.VideoStorage;
 import com.example.makeup.auth.CustomUserDetailsService;
 import com.example.makeup.video.Video;
 import com.example.makeup.video.VideoLikeRepository;
@@ -49,7 +51,9 @@ public class AccountDeletionService {
     private final VideoRepository videoRepository;
     private final NewsRepository newsRepository;
     private final VideoLikeRepository videoLikeRepository;
-    private final MinioService minioService;
+    private final VideoStorage videoStorage;
+    private final ThumbnailStorage thumbnailStorage;
+    private final NewsImageStorage newsImageStorage;
     private final CustomUserDetailsService userDetailsService;
 
     @Transactional
@@ -93,7 +97,7 @@ public class AccountDeletionService {
 
     /**
      * Собирает ключи объектов и удаляет их из MinIO только после успешного коммита.
-     * Ошибки удаления глушит сам MinioService — повреждённые файлы не должны
+     * Ошибки удаления глушат сами хранилища — повреждённые файлы не должны
      * откатывать уже завершённое удаление аккаунта.
      */
     private void purgeMinioAfterCommit(List<Video> videos, List<NewsItem> news) {
@@ -115,9 +119,9 @@ public class AccountDeletionService {
         }
 
         Runnable purge = () -> {
-            videoKeys.forEach(minioService::deleteVideo);
-            thumbnailKeys.forEach(minioService::deleteThumbnail);
-            newsImageKeys.forEach(minioService::deleteNewsImage);
+            videoKeys.forEach(videoStorage::delete);
+            thumbnailKeys.forEach(thumbnailStorage::delete);
+            newsImageKeys.forEach(newsImageStorage::delete);
             log.info("MinIO purge: videos={}, thumbnails={}, news images={}",
                     videoKeys.size(), thumbnailKeys.size(), newsImageKeys.size());
         };

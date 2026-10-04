@@ -1,11 +1,15 @@
 package com.example.makeup.news;
 
 import com.example.makeup.auth.User;
+import com.example.makeup.auth.UserService;
+import com.example.makeup.media.NewsImageStorage;
+import com.example.makeup.video.VideoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -18,16 +22,11 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import com.example.makeup.auth.UserService;
-import com.example.makeup.media.MinioService;
-import com.example.makeup.video.VideoService;
 @ExtendWith(MockitoExtension.class)
 class NewsServiceTest {
 
@@ -41,7 +40,7 @@ class NewsServiceTest {
     private UserService userService;
 
     @Mock
-    private MinioService minioService;
+    private NewsImageStorage newsImageStorage;
 
     @InjectMocks
     private NewsService newsService;
@@ -94,11 +93,11 @@ class NewsServiceTest {
 
         when(userService.getUserByUsername("alice")).thenReturn(author);
         when(newsRepository.save(any(NewsItem.class))).thenReturn(firstSaved, secondSaved);
-        when(minioService.uploadNewsImage(any(), anyString())).thenReturn("uuid121212");
+        when(newsImageStorage.upload(any(), anyString())).thenReturn("uuid121212");
 
         newsService.createNews("Title", "Body", null, "alice", image);
 
-        verify(minioService).uploadNewsImage(any(), anyString());
+        verify(newsImageStorage).upload(any(), anyString());
         verify(newsRepository, org.mockito.Mockito.times(2)).save(any(NewsItem.class));
     }
 
@@ -109,7 +108,7 @@ class NewsServiceTest {
 
         when(userService.getUserByUsername("alice")).thenReturn(author);
         when(newsRepository.save(any(NewsItem.class))).thenReturn(NewsItem.builder().id(10L).build());
-        when(minioService.uploadNewsImage(any(), anyString())).thenThrow(new RuntimeException("minio down"));
+        when(newsImageStorage.upload(any(), anyString())).thenThrow(new RuntimeException("minio down"));
 
         Long id = newsService.createNews("Title", "Body", null, "alice", image);
 
@@ -124,7 +123,7 @@ class NewsServiceTest {
 
         newsService.deleteNews(7L, "alice");
 
-        verify(minioService).deleteNewsImage("img-uuid");
+        verify(newsImageStorage).delete("img-uuid");
         verify(newsRepository).save(news);
         verify(newsRepository, never()).delete(any(NewsItem.class));
         assertNotNull(news.getDeletedAt());
@@ -140,7 +139,7 @@ class NewsServiceTest {
                 () -> newsService.deleteNews(7L, "bob"));
 
         verify(newsRepository, never()).save(any(NewsItem.class));
-        verify(minioService, never()).deleteNewsImage(anyString());
+        verify(newsImageStorage, never()).delete(anyString());
     }
 
     @Test
@@ -151,19 +150,14 @@ class NewsServiceTest {
 
         newsService.deleteNews(7L, "alice");
 
-        verify(minioService, never()).deleteNewsImage(anyString());
+        verify(newsImageStorage, never()).delete(anyString());
         verify(newsRepository).save(news);
     }
 
     @Test
-    void getImage_shouldDelegateToMinio() {
-        when(minioService.getImageBytes("img.jpg", com.example.makeup.media.BucketType.NEWS_IMAGE))
-                .thenReturn(new byte[]{1, 2, 3});
+    void getImageFile_shouldDelegateToStorage() throws Exception {
+        when(newsImageStorage.get("img.jpg")).thenReturn(new ByteArrayResource(new byte[]{1, 2, 3}));
 
-        byte[] bytes = newsService.getImage("img.jpg");
-
-        assertEquals(3, bytes.length);
-        assertTrue(bytes[0] == 1);
-        verify(minioService, never()).getVideoFile(anyString());
+        assertEquals(3, newsService.getImageFile("img.jpg").getContentAsByteArray().length);
     }
 }

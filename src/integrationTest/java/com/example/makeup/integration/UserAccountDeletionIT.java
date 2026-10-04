@@ -84,9 +84,9 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
 
         deletionService.deleteAccount(user.getId(), user.getUsername());
 
-        verify(minioService).deleteVideo(video.getObjectKey());
-        verify(minioService).deleteThumbnail(video.getThumbnailKey());
-        verify(minioService).deleteNewsImage(newsImageKey);
+        verify(videoStorage).delete(video.getObjectKey());
+        verify(thumbnailStorage).delete(video.getThumbnailKey());
+        verify(newsImageStorage).delete(newsImageKey);
     }
 
     @Test
@@ -203,6 +203,6 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
                 .andExpect(status().isForbidden());
 
         assertThat(userRepository.findById(user.getId())).isPresent();
-        verify(minioService, never()).deleteVideo(org.mockito.ArgumentMatchers.anyString());
+        verify(videoStorage, never()).delete(org.mockito.ArgumentMatchers.anyString());
     }
 }

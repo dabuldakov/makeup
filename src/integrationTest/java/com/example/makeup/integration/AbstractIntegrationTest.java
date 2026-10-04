@@ -4,8 +4,10 @@ import com.example.makeup.auth.Role;
 import com.example.makeup.auth.User;
 import com.example.makeup.integration.containers.TestContainersRegistry;
 import com.example.makeup.auth.UserRepository;
-import com.example.makeup.media.MinioService;
+import com.example.makeup.media.NewsImageStorage;
 import com.example.makeup.media.ThumbnailGeneratorService;
+import com.example.makeup.media.ThumbnailStorage;
+import com.example.makeup.media.VideoStorage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.StatObjectResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -76,7 +78,13 @@ public abstract class AbstractIntegrationTest {
     protected UserDetailsService userDetailsService;
 
     @MockitoBean
-    protected MinioService minioService;
+    protected VideoStorage videoStorage;
+
+    @MockitoBean
+    protected ThumbnailStorage thumbnailStorage;
+
+    @MockitoBean
+    protected NewsImageStorage newsImageStorage;
 
     @MockitoBean
     protected ThumbnailGeneratorService thumbnailGeneratorService;
@@ -103,29 +111,29 @@ public abstract class AbstractIntegrationTest {
 
     @BeforeEach
     void stubExternalServices() {
-        when(minioService.uploadVideo(any(java.io.InputStream.class), anyLong(), any(), anyString()))
+        when(videoStorage.upload(any(java.io.InputStream.class), anyLong(), any(), anyString()))
                 .thenAnswer(inv -> inv.getArgument(3, String.class) + ".mp4");
-        when(minioService.uploadThumbnail(any(MultipartFile.class), anyString()))
+        when(thumbnailStorage.upload(any(MultipartFile.class), anyString()))
                 .thenAnswer(inv -> inv.getArgument(1, String.class));
-        when(minioService.uploadThumbnail(any(java.awt.image.BufferedImage.class), anyString()))
+        when(thumbnailStorage.upload(any(java.awt.image.BufferedImage.class), anyString()))
                 .thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
-        when(minioService.uploadNewsImage(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
-        when(minioService.getImageBytes(any(), any())).thenReturn(new byte[]{1, 2, 3});
-        when(minioService.getImageFile(any(), any())).thenReturn(
-                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3}))
-        );
-        when(minioService.getVideoFile(any())).thenReturn(
+        when(newsImageStorage.upload(any(), any())).thenAnswer(inv -> inv.getArgument(1, String.class) + ".jpeg");
+        when(newsImageStorage.get(any())).thenReturn(
+                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3})));
+        when(thumbnailStorage.get(any())).thenReturn(
+                new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3})));
+        when(videoStorage.get(any())).thenReturn(
                 new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3, 4}))
         );
-        when(minioService.getVideoFile(anyString(), anyLong(), anyLong())).thenReturn(
+        when(videoStorage.get(anyString(), anyLong(), anyLong())).thenReturn(
                 new InputStreamResource(new ByteArrayInputStream(new byte[]{1, 2, 3, 4}))
         );
         StatObjectResponse videoStat = mock(StatObjectResponse.class);
         when(videoStat.size()).thenReturn(4L);
         when(videoStat.contentType()).thenReturn("video/mp4");
-        when(minioService.statVideo(anyString())).thenReturn(videoStat);
-        when(minioService.getVideoPresignedUrl(any())).thenReturn("http://localhost:9000/presigned/video");
-        when(minioService.getThumbnailPresignedUrl(any())).thenReturn("http://localhost:9000/presigned/thumbnail");
+        when(videoStorage.stat(anyString())).thenReturn(videoStat);
+        when(videoStorage.presignedUrl(any())).thenReturn("http://localhost:9000/presigned/video");
+        when(thumbnailStorage.presignedUrl(any())).thenReturn("http://localhost:9000/presigned/thumbnail");
     }
 
     /**

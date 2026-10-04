@@ -1,6 +1,5 @@
 package com.example.makeup.video;
 
-import com.example.makeup.media.BucketType;
 import com.example.makeup.auth.User;
 import com.example.makeup.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +20,8 @@ import java.util.UUID;
 
 import com.example.makeup.auth.UserService;
 import com.example.makeup.media.MediaJobService;
-import com.example.makeup.media.MinioService;
+import com.example.makeup.media.ThumbnailStorage;
+import com.example.makeup.media.VideoStorage;
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,7 +29,8 @@ public class VideoService {
 
     private final VideoRepository videoRepository;
     private final VideoLikeRepository videoLikeRepository;
-    private final MinioService minioService;
+    private final VideoStorage videoStorage;
+    private final ThumbnailStorage thumbnailStorage;
     private final UserService userService;
     private final MediaJobService mediaJobService;
     private final ApplicationEventPublisher eventPublisher;
@@ -48,7 +49,7 @@ public class VideoService {
 
             String objectKey;
             try (InputStream staged = Files.newInputStream(tempVideo)) {
-                objectKey = minioService.uploadVideo(staged, Files.size(tempVideo),
+                objectKey = videoStorage.upload(staged, Files.size(tempVideo),
                         file.getContentType(), fileId);
             }
             Files.deleteIfExists(tempVideo);
@@ -65,7 +66,7 @@ public class VideoService {
 
             // Клиент прислал готовое превью — публикуем сразу.
             if (thumbnail != null && !thumbnail.isEmpty()) {
-                String thumbnailKey = minioService.uploadThumbnail(thumbnail, UUID.randomUUID().toString());
+                String thumbnailKey = thumbnailStorage.upload(thumbnail, UUID.randomUUID().toString());
                 builder.thumbnailKey(thumbnailKey).status(VideoStatus.PUBLISHED);
 
                 Video savedVideo = videoRepository.save(builder.build());
@@ -89,35 +90,31 @@ public class VideoService {
     }
 
     public Resource getVideoFile(String objectKey) {
-        return minioService.getVideoFile(objectKey);
+        return videoStorage.get(objectKey);
     }
 
     public Resource getVideoFile(String objectKey, long offset, long length) {
-        return minioService.getVideoFile(objectKey, offset, length);
+        return videoStorage.get(objectKey, offset, length);
     }
 
     /**
      * Размер и content-type объекта видео — для заголовков HTTP Range.
      */
     public VideoFileInfo getVideoFileInfo(String objectKey) {
-        io.minio.StatObjectResponse stat = minioService.statVideo(objectKey);
+        io.minio.StatObjectResponse stat = videoStorage.stat(objectKey);
         return new VideoFileInfo(stat.size(), stat.contentType());
     }
 
     public String getVideoUrl(String objectKey) {
-        return minioService.getVideoPresignedUrl(objectKey);
+        return videoStorage.presignedUrl(objectKey);
     }
 
     public String getThumbnailUrl(String thumbnailKey) {
-        return minioService.getThumbnailPresignedUrl(thumbnailKey);
-    }
-
-    public byte[] getThumbnailBytes(String thumbnailKey) {
-        return minioService.getImageBytes(thumbnailKey, BucketType.THUMBNAILS);
+        return thumbnailStorage.presignedUrl(thumbnailKey);
     }
 
     public Resource getThumbnailFile(String thumbnailKey) {
-        return minioService.getImageFile(thumbnailKey, BucketType.THUMBNAILS);
+        return thumbnailStorage.get(thumbnailKey);
     }
 
     public Page<VideoItem> getAllVideos(Pageable pageable) {
@@ -190,10 +187,10 @@ public class VideoService {
         eventPublisher.publishEvent(new VideoDeletedEvent(id));
 
         if (video.getThumbnailKey() != null && !video.getThumbnailKey().isBlank()) {
-            minioService.deleteThumbnail(video.getThumbnailKey());
+            thumbnailStorage.delete(video.getThumbnailKey());
         }
         if (video.getObjectKey() != null && !video.getObjectKey().isBlank()) {
-            minioService.deleteVideo(video.getObjectKey());
+            videoStorage.delete(video.getObjectKey());
         }
 
         videoRepository.delete(video);

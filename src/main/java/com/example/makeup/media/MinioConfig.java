@@ -14,7 +14,12 @@ public class MinioConfig {
     private String externalUrl;
     private String accessKey;
     private String secretKey;
+    /** Bucket видео (minio.bucket). */
     private String bucket;
+    /** Bucket превью (minio.thumbnail-bucket). */
+    private String thumbnailBucket;
+    /** Bucket изображений новостей (minio.news-image). */
+    private String newsImage;
 
     @Bean
     public MinioClient minioClient() {
