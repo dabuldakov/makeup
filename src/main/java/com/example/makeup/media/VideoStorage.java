@@ -30,7 +30,7 @@ public class VideoStorage extends MinioObjectStorage {
             "video/x-flv", ".flv"
     );
 
-    public VideoStorage(MinioClient client,
+    public VideoStorage(@Qualifier("minioClient") MinioClient client,
                         @Qualifier("minioClientForPresignedUrls") MinioClient presignedClient,
                         MinioConfig config) {
         super(client, presignedClient, config.getBucket());

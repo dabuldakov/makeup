@@ -21,7 +21,7 @@ public class ThumbnailStorage extends MinioObjectStorage {
 
     private static final int PRESIGNED_EXPIRY_SECONDS = 60 * 60;
 
-    public ThumbnailStorage(MinioClient client,
+    public ThumbnailStorage(@Qualifier("minioClient") MinioClient client,
                             @Qualifier("minioClientForPresignedUrls") MinioClient presignedClient,
                             MinioConfig config) {
         super(client, presignedClient, config.getThumbnailBucket());

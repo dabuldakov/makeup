@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Component
 public class NewsImageStorage extends MinioObjectStorage {
 
-    public NewsImageStorage(MinioClient client,
+    public NewsImageStorage(@Qualifier("minioClient") MinioClient client,
                             @Qualifier("minioClientForPresignedUrls") MinioClient presignedClient,
                             MinioConfig config) {
         super(client, presignedClient, config.getNewsImage());
