@@ -89,6 +89,9 @@ public abstract class AbstractIntegrationTest {
     @MockitoBean
     protected ThumbnailGeneratorService thumbnailGeneratorService;
 
+    @Autowired
+    protected com.example.makeup.auth.LoginRateLimiter loginRateLimiter;
+
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", TestContainersRegistry.POSTGRES::getJdbcUrl);
@@ -107,6 +110,8 @@ public abstract class AbstractIntegrationTest {
                     "TRUNCATE TABLE media_jobs, video_likes, news, videos, users RESTART IDENTITY CASCADE"
             );
         }
+        // Лимитер логина/регистрации в памяти — сбрасываем между тестами.
+        loginRateLimiter.reset();
     }
 
     @BeforeEach

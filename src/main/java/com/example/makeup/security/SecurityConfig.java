@@ -35,7 +35,10 @@ public class SecurityConfig {
                 .cors(cors -> cors.configure(http))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        // Публичные auth-эндпоинты перечислены явно, а не как /auth/**:
+                        // любой будущий защищённый /auth/* иначе стал бы открытым.
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/auth/login", "/auth/register").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                                 "/api/news/**", "/api/videos/**").permitAll()

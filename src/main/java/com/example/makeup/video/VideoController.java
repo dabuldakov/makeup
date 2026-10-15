@@ -97,7 +97,8 @@ public class VideoController {
             Resource resource = videoService.getVideoFile(fileName, 0, -1);
             return ResponseEntity.ok()
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + com.example.makeup.util.FileNames.sanitize(fileName) + "\"")
                     .contentLength(fileSize)
                     .contentType(contentType)
                     .body(resource);
