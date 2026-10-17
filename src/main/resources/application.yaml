@@ -46,6 +46,14 @@ spring:
 jwt:
   expiration: ${JWT_EXPIRATION:604800000}
 
+# Приём access-токенов единого IdP (auth-service, RS256/JWKS).
+auth:
+  oidc:
+    enabled: ${AUTH_OIDC_ENABLED:false}
+    issuer: ${AUTH_ISSUER:https://auth.muzea.su}
+    jwks-uri: ${AUTH_JWKS_URI:https://auth.muzea.su/.well-known/jwks.json}
+    audience: ${AUTH_AUDIENCE:api-muzea}
+
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
   cache:

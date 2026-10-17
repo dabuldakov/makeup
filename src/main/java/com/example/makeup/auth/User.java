@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -37,6 +38,13 @@ public class User implements UserDetails, Serializable {
 
     @Column(unique = true, nullable = false, length = 50)
     private String username;
+
+    /**
+     * UUID пользователя в едином IdP (auth-service), claim {@code sub}.
+     * NULL для legacy-аккаунтов, заведённых собственным логином/паролем.
+     */
+    @Column(name = "auth_subject", unique = true)
+    private UUID authSubject;
 
     @Column(unique = true, nullable = false)
     private String email;
