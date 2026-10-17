@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -25,7 +24,13 @@ public class OidcUserProvisioner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional
+    /**
+     * Намеренно без {@code @Transactional}: при гонке параллельных первых
+     * запросов проигравший получает нарушение уникальности, и перечитать
+     * пользователя нужно в НОВОЙ транзакции — иначе Hibernate-сессия уже
+     * rollback-only и повторное чтение падает. Транзакции открывают репозиторные
+     * методы.
+     */
     public User findOrCreate(UUID subject, String username, String email) {
         Optional<User> existing = userRepository.findByAuthSubject(subject);
         if (existing.isPresent()) {
@@ -38,7 +43,11 @@ public class OidcUserProvisioner {
                 User user = byEmail.get();
                 user.setAuthSubject(subject);
                 log.info("Linked auth subject {} to existing makeup user {}", subject, user.getId());
-                return userRepository.save(user);
+                try {
+                    return userRepository.save(user);
+                } catch (DataIntegrityViolationException e) {
+                    return userRepository.findByAuthSubject(subject).orElseThrow(() -> e);
+                }
             }
         }
 
