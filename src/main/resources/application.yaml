@@ -53,6 +53,8 @@ auth:
     issuer: ${AUTH_ISSUER:https://auth.muzea.su}
     jwks-uri: ${AUTH_JWKS_URI:https://auth.muzea.su/.well-known/jwks.json}
     audience: ${AUTH_AUDIENCE:api-muzea}
+    # Линковать существующий аккаунт по username, если email не совпал (миграция).
+    link-by-username: ${AUTH_OIDC_LINK_BY_USERNAME:true}
 
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}

@@ -1,8 +1,8 @@
 package com.example.makeup.auth;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,8 +25,14 @@ class OidcUserProvisionerTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @InjectMocks
     private OidcUserProvisioner provisioner;
+
+    @BeforeEach
+    void setUp() {
+        OidcProperties properties =
+                new OidcProperties(true, "iss", "jwks", java.util.List.of("api-muzea"), true);
+        provisioner = new OidcUserProvisioner(userRepository, passwordEncoder, properties);
+    }
 
     @Test
     void returnsExistingUserBySubject() {
@@ -46,6 +52,20 @@ class OidcUserProvisionerTest {
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User result = provisioner.findOrCreate(subject, "user", "user@example.com");
+
+        assertThat(result.getAuthSubject()).isEqualTo(subject);
+    }
+
+    @Test
+    void linksExistingAccountByUsernameWhenEmailDiffers() {
+        UUID subject = UUID.randomUUID();
+        User existing = user("legacylogin");
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("legacylogin")).thenReturn(Optional.of(existing));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User result = provisioner.findOrCreate(subject, "legacylogin", "new@example.com");
 
         assertThat(result.getAuthSubject()).isEqualTo(subject);
     }

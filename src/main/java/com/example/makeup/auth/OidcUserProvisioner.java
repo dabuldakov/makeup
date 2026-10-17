@@ -23,6 +23,7 @@ public class OidcUserProvisioner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OidcProperties properties;
 
     /**
      * Создание сериализуем по субъекту: на первом входе приложение шлёт
@@ -60,7 +61,22 @@ public class OidcUserProvisioner {
             if (byEmail.isPresent()) {
                 User user = byEmail.get();
                 user.setAuthSubject(subject);
-                log.info("Linked auth subject {} to existing makeup user {}", subject, user.getId());
+                log.info("Linked auth subject {} to existing makeup user {} by email", subject, user.getId());
+                try {
+                    return userRepository.save(user);
+                } catch (DataIntegrityViolationException e) {
+                    return userRepository.findByAuthSubject(subject).orElseThrow(() -> e);
+                }
+            }
+        }
+
+        // Фолбэк миграции: привязка по прежнему логину (username), если email не совпал.
+        if (properties.linkByUsername() && username != null && !username.isBlank()) {
+            Optional<User> byUsername = userRepository.findByUsername(username);
+            if (byUsername.isPresent()) {
+                User user = byUsername.get();
+                user.setAuthSubject(subject);
+                log.info("Linked auth subject {} to existing makeup user {} by username", subject, user.getId());
                 try {
                     return userRepository.save(user);
                 } catch (DataIntegrityViolationException e) {
