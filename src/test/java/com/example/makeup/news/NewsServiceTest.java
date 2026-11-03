@@ -42,6 +42,9 @@ class NewsServiceTest {
     @Mock
     private NewsImageStorage newsImageStorage;
 
+    @Mock
+    private NewsPushNotifier newsPushNotifier;
+
     @InjectMocks
     private NewsService newsService;
 

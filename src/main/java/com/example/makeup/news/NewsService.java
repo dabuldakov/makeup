@@ -28,6 +28,7 @@ public class NewsService {
     private final VideoService videoService;
     private final UserService userService;
     private final NewsImageStorage newsImageStorage;
+    private final NewsPushNotifier newsPushNotifier;
 
     public Page<NewsListItem> getAllNews(Pageable pageable) {
         log.debug("Fetching news list (page: {}, size: {})", pageable.getPageNumber(), pageable.getPageSize());
@@ -64,6 +65,7 @@ public class NewsService {
         NewsItem savedNews = newsRepository.save(news);
 
         uploadImage(image, savedNews);
+        newsPushNotifier.notifyNews(username, savedNews.getId(), title, content);
 
         log.info("News created: id={}, title={}, by user={}", savedNews.getId(), title, username);
         return savedNews.getId();

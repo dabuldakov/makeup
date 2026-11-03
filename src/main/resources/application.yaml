@@ -82,3 +82,7 @@ minio:
   bucket: videos
   thumbnail-bucket: thumbnails
   news-image: news-image
+# Push о новостях: makeup -> chat backend (только контакты автора).
+push:
+  chat-url: ${CHAT_PUSH_URL:https://chat-muzea.su}
+  internal-token: ${CHAT_PUSH_TOKEN:}
