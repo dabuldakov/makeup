@@ -16,13 +16,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class UserControllerSecurityIT extends AbstractIntegrationTest {
 
-    private static final String BEARER = "Bearer ";
-
     @Test
     void currentUserReturnsOwnProfile() throws Exception {
-        String token = registerUser("self");
+        User self = createUser("self");
 
-        mockMvc.perform(get("/api/users/me").header("Authorization", BEARER + token))
+        mockMvc.perform(get("/api/users/me").with(auth(self)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userName").value("self"))
                 .andExpect(jsonPath("$.role").value("USER"));
@@ -36,11 +34,10 @@ class UserControllerSecurityIT extends AbstractIntegrationTest {
 
     @Test
     void updateOwnProfileIsAllowed() throws Exception {
-        String token = registerUser("owner");
-        User owner = userRepository.findByUsername("owner").orElseThrow();
+        User owner = createUser("owner");
 
         mockMvc.perform(put("/api/users/{id}", owner.getId())
-                        .header("Authorization", BEARER + token)
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fullName\":\"New Name\"}"))
                 .andExpect(status().isOk())
@@ -49,11 +46,11 @@ class UserControllerSecurityIT extends AbstractIntegrationTest {
 
     @Test
     void updateForeignProfileIsForbidden() throws Exception {
-        String token = registerUser("attacker");
+        User attacker = createUser("attacker");
         User victim = createUser("victim");
 
         mockMvc.perform(put("/api/users/{id}", victim.getId())
-                        .header("Authorization", BEARER + token)
+                        .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fullName\":\"Hijacked\"}"))
                 .andExpect(status().isForbidden());

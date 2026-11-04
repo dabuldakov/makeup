@@ -14,20 +14,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,16 +33,13 @@ import java.io.ByteArrayInputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 
 /**
  * База для всех интеграционных тестов makeup-бэкенда:
@@ -72,9 +65,6 @@ public abstract class AbstractIntegrationTest {
     protected UserRepository userRepository;
 
     @Autowired
-    protected PasswordEncoder passwordEncoder;
-
-    @Autowired
     protected UserDetailsService userDetailsService;
 
     @MockitoBean
@@ -88,9 +78,6 @@ public abstract class AbstractIntegrationTest {
 
     @MockitoBean
     protected ThumbnailGeneratorService thumbnailGeneratorService;
-
-    @Autowired
-    protected com.example.makeup.auth.LoginRateLimiter loginRateLimiter;
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
@@ -110,8 +97,6 @@ public abstract class AbstractIntegrationTest {
                     "TRUNCATE TABLE media_jobs, video_likes, news, videos, users RESTART IDENTITY CASCADE"
             );
         }
-        // Лимитер логина/регистрации в памяти — сбрасываем между тестами.
-        loginRateLimiter.reset();
     }
 
     @BeforeEach
@@ -141,48 +126,27 @@ public abstract class AbstractIntegrationTest {
         when(thumbnailStorage.presignedUrl(any())).thenReturn("http://localhost:9000/presigned/thumbnail");
     }
 
-    /**
-     * Удешевляем BCrypt в тестах (strength 4 вместо 10 по умолчанию),
-     * чтобы регистрация/логин не тратили сотни миллисекунд на каждый вызов.
-     */
-    @TestConfiguration
-    static class WeakPasswordEncoderConfig {
-        @Bean
-        @Primary
-        PasswordEncoder testPasswordEncoder() {
-            return new BCryptPasswordEncoder(4);
-        }
-    }
-
-    protected String registerUser(String username) throws Exception {
-        String json = objectMapper.writeValueAsString(Map.of(
-                "username", username,
-                "email", username + "@example.com",
-                "password", "password123",
-                "fullName", "Test " + username
-        ));
-        MvcResult result = mockMvc.perform(post("/auth/register")
-                        .contentType(APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isOk())
-                .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
-    }
-
     protected User createUser(String username) {
-        return createUser(username, "password123");
-    }
-
-    protected User createUser(String username, String rawPassword) {
         User user = User.builder()
                 .username(username)
                 .email(username + "@example.com")
-                .password(passwordEncoder.encode(rawPassword))
                 .fullName("Test " + username)
                 .role(Role.USER)
                 .isActive(true)
                 .build();
         return userRepository.save(user);
+    }
+
+    /**
+     * Аутентифицирует MockMvc-запрос от имени пользователя. OIDC в тестах
+     * выключен, поэтому токен получить неоткуда — подставляем SecurityContext
+     * напрямую. Principal — сам {@link User}, так что {@code getName()} в
+     * контроллерах возвращает локальный username.
+     */
+    protected RequestPostProcessor auth(User user) {
+        var authentication = new UsernamePasswordAuthenticationToken(
+                user, null, user.getAuthorities());
+        return authentication(authentication);
     }
 
     protected UserDetails loadUser(String username) {

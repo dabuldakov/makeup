@@ -1,6 +1,6 @@
 # makeup
 
-Бэкенд приложения (новости и видео): Java 21, Spring Boot 4.0.5, PostgreSQL, MinIO, JWT.
+Бэкенд приложения (новости и видео): Java 21, Spring Boot 4.0.5, PostgreSQL, MinIO.
 
 ## Архитектура
 
@@ -9,8 +9,8 @@ Stateless модульный монолит с проверяемыми ArchUnit
 
 ```
 config/util/exception   ← база
-auth                    ← пользователи, JWT; базовый модуль, не зависит от feature-модулей
-security                ← адаптер безопасности над auth
+auth                    ← пользователи; базовый модуль, не зависит от feature-модулей
+security                ← адаптер безопасности над auth (приём токенов IdP)
 media                   ← объектное хранилище (MinIO) и очередь задач
 news → auth, media, video
 video → auth, media
@@ -34,7 +34,7 @@ account → auth, news, video, media   ← листовой оркестрато
 ## Горизонтальное масштабирование
 
 Несколько нод работают с **одной общей БД** и общим MinIO. Приложение stateless
-(JWT, файлы в MinIO), sticky sessions не нужны. Что учитывается:
+(access-токен единого IdP, файлы в MinIO), sticky sessions не нужны. Что учитывается:
 
 - **Кеш пользователей** (`CustomUserDetailsService`) — по умолчанию локальный
   Caffeine. При нескольких нодах включается общий **Redis**
@@ -153,7 +153,7 @@ docker compose up -d                 # MinIO WebUI: http://127.0.0.1:9001
 
 | Переменная | Назначение | По умолчанию |
 |-----------|-----------|--------------|
-| `JWT_SECRET` | ключ подписи JWT (обязателен в prod) | есть dev-дефолт только в профиле `dev` |
+| `AUTH_OIDC_ENABLED` | приём access-токенов единого IdP (auth-service) | `false` (в `prod` — `true`) |
 | `APP_PUBLIC_BASE_URL` | базовый URL для абсолютных ссылок на превью/картинки | `http://localhost:8080`, в prod `http://90.188.89.63:8085` |
 | `APP_CORS_ALLOWED_ORIGINS` | список origin-паттернов через запятую | `http://localhost:*` |
 | `POSTGRES_*`, `MINIO_*` | доступ к БД и объектному хранилищу | — |

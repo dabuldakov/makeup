@@ -22,9 +22,6 @@ spring:
     baseline-version: 0
     locations: classpath:db/migration
 
-jwt:
-  secret: ${JWT_SECRET}
-
 # В проде приём токенов auth-service включён; отключается AUTH_OIDC_ENABLED=false.
 auth:
   oidc:

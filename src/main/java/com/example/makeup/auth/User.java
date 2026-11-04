@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
-@ToString(exclude = "password")
+@ToString
 @EqualsAndHashCode(of = "id")
 @Builder
 @NoArgsConstructor
@@ -48,9 +48,6 @@ public class User implements UserDetails, Serializable {
 
     @Column(unique = true, nullable = false)
     private String email;
-
-    @Column(name = "password_hash", nullable = false)
-    private String password;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -88,6 +85,15 @@ public class User implements UserDetails, Serializable {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    /**
+     * Пароль не используется: вход только через единый IdP (auth-service).
+     * Метод нужен, потому что {@link UserDetails} его требует.
+     */
+    @Override
+    public String getPassword() {
+        return null;
     }
 
     @Override

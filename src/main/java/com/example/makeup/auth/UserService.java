@@ -5,7 +5,6 @@ import com.example.makeup.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,29 +13,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final CustomUserDetailsService userDetailsService;
-
-    public User register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new ConflictException("Username already exists");
-        }
-
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException("Email already exists");
-        }
-
-        User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .role(Role.USER)
-                .isActive(true)
-                .build();
-
-        return userRepository.save(user);
-    }
 
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)

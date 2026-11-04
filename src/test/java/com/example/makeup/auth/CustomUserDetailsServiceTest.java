@@ -21,7 +21,7 @@ class CustomUserDetailsServiceTest {
 
     @Test
     void loadsUserAndCachesIt() {
-        User user = User.builder().username("alice").password("hash").role(Role.USER).isActive(true).build();
+        User user = User.builder().username("alice").role(Role.USER).isActive(true).build();
         when(repository.findByUsername("alice")).thenReturn(Optional.of(user));
 
         assertThat(service.loadUserByUsername("alice")).isSameAs(user);
@@ -32,7 +32,7 @@ class CustomUserDetailsServiceTest {
 
     @Test
     void evictForcesReload() {
-        User user = User.builder().username("alice").password("hash").role(Role.USER).isActive(true).build();
+        User user = User.builder().username("alice").role(Role.USER).isActive(true).build();
         when(repository.findByUsername("alice")).thenReturn(Optional.of(user));
 
         service.loadUserByUsername("alice");

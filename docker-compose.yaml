@@ -50,7 +50,6 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET}
-      JWT_SECRET: ${JWT_SECRET}
       REDIS_HOST: redis
       APP_CACHE_REDIS_ENABLED: "true"
     env_file:

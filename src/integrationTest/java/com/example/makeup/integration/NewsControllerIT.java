@@ -1,5 +1,6 @@
 package com.example.makeup.integration;
 
+import com.example.makeup.auth.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
@@ -19,8 +20,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class NewsControllerIT extends AbstractIntegrationTest {
 
-    private static final String BEARER = "Bearer ";
-
     @Test
     void getAllNewsWithoutTokenReturnsOk() throws Exception {
         mockMvc.perform(get("/api/news"))
@@ -37,17 +36,17 @@ class NewsControllerIT extends AbstractIntegrationTest {
 
     @Test
     void createNewsAndListItForAuthenticatedUser() throws Exception {
-        String token = registerUser("dabuldakov");
+        User author = createUser("dabuldakov");
 
         mockMvc.perform(multipart("/api/news")
                         .param("title", "Beautiful Makeup")
                         .param("content", "Look at this")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", not(emptyOrNullString())));
 
         mockMvc.perform(get("/api/news")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].title").value("Beautiful Makeup"))
@@ -56,20 +55,20 @@ class NewsControllerIT extends AbstractIntegrationTest {
 
     @Test
     void createNewsWithImageExposesImageUrlAndServesBytes() throws Exception {
-        String token = registerUser("author1");
+        User author = createUser("author1");
 
         String idJson = mockMvc.perform(multipart("/api/news")
                         .file(imageFile())
                         .param("title", "With image")
                         .param("content", "Content")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         long id = objectMapper.readTree(idJson).get("id").asLong();
 
         mockMvc.perform(get("/api/news/" + id)
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.imageUrl", not(emptyOrNullString())))
@@ -77,12 +76,12 @@ class NewsControllerIT extends AbstractIntegrationTest {
 
         String imageUrl = objectMapper.readTree(
                         mockMvc.perform(get("/api/news/" + id)
-                                        .header("Authorization", BEARER + token))
+                                        .with(auth(author)))
                                 .andReturn().getResponse().getContentAsString())
                 .get("imageUrl").asText();
 
         mockMvc.perform(get(imageUrl)
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_JPEG));
     }
@@ -101,36 +100,36 @@ class NewsControllerIT extends AbstractIntegrationTest {
 
     @Test
     void authorCanDeleteOwnNews() throws Exception {
-        String token = registerUser("author-del");
-        long id = createNews(token, "Delete me");
+        User author = createUser("author-del");
+        long id = createNews(author, "Delete me");
 
-        mockMvc.perform(delete("/api/news/" + id).header("Authorization", BEARER + token))
+        mockMvc.perform(delete("/api/news/" + id).with(auth(author)))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/news").header("Authorization", BEARER + token))
+        mockMvc.perform(get("/api/news").with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(0)));
     }
 
     @Test
     void nonAuthorCannotDeleteNews() throws Exception {
-        String authorToken = registerUser("author-keep");
-        String otherToken = registerUser("intruder");
-        long id = createNews(authorToken, "Keep me");
+        User author = createUser("author-keep");
+        User other = createUser("intruder");
+        long id = createNews(author, "Keep me");
 
-        mockMvc.perform(delete("/api/news/" + id).header("Authorization", BEARER + otherToken))
+        mockMvc.perform(delete("/api/news/" + id).with(auth(other)))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/api/news").header("Authorization", BEARER + authorToken))
+        mockMvc.perform(get("/api/news").with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)));
     }
 
-    private long createNews(String token, String title) throws Exception {
+    private long createNews(User author, String title) throws Exception {
         String idJson = mockMvc.perform(multipart("/api/news")
                         .param("title", title)
                         .param("content", "Content")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(idJson).get("id").asLong();

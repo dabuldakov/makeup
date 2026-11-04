@@ -1,71 +1,30 @@
 package com.example.makeup.integration;
 
-import com.example.makeup.auth.RegisterRequest;
+import com.example.makeup.auth.UpdateUserRequest;
 import com.example.makeup.auth.User;
-import com.example.makeup.auth.JwtService;
 import com.example.makeup.auth.UserService;
+import com.example.makeup.exception.ConflictException;
+import com.example.makeup.exception.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Интеграционные тесты регистрации и работы с пользователями: реальный
- * BCrypt-хэш, дубликаты username/email, обновление профиля и round-trip JWT.
+ * Интеграционные тесты работы с пользователями: чтение профиля из БД,
+ * обновление профиля (fullName/avatar/email) и кеш UserDetails.
+ * Собственного логина/пароля больше нет — вход только через единый IdP.
  */
 class UserServiceIT extends AbstractIntegrationTest {
 
     @Autowired
     private UserService userService;
 
-    @Autowired
-    private JwtService jwtService;
-
-    private RegisterRequest request(String username, String email) {
-        RegisterRequest r = new RegisterRequest();
-        r.setUsername(username);
-        r.setEmail(email);
-        r.setPassword("password123");
-        r.setFullName("Test " + username);
-        return r;
-    }
-
     @Test
-    void registerPersistsUserWithEncodedPassword() {
-        User user = userService.register(request("alice", "alice@example.com"));
-
-        assertThat(user.getId()).isNotNull();
-        assertThat(user.getUsername()).isEqualTo("alice");
-        assertThat(user.getPassword()).isNotEqualTo("password123");
-        assertThat(passwordEncoder.matches("password123", user.getPassword())).isTrue();
-        assertThat(user.getRole().name()).isEqualTo("USER");
-        assertThat(user.isEnabled()).isTrue();
-    }
-
-    @Test
-    void registerRejectsDuplicateUsername() {
-        userService.register(request("alice", "alice@example.com"));
-
-        assertThatThrownBy(() -> userService.register(request("alice", "other@example.com")))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Username already exists");
-    }
-
-    @Test
-    void registerRejectsDuplicateEmail() {
-        userService.register(request("alice", "alice@example.com"));
-
-        assertThatThrownBy(() -> userService.register(request("bob", "alice@example.com")))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Email already exists");
-    }
-
-    @Test
-    void getUserByUsernameReturnsRegisteredUser() {
-        userService.register(request("alice", "alice@example.com"));
+    void getUserByUsernameReturnsPersistedUser() {
+        createUser("alice");
 
         User user = userService.getUserByUsername("alice");
 
@@ -79,28 +38,61 @@ class UserServiceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void updateUserChangesFullNameAndAvatar() {
-        User saved = userService.register(request("alice", "alice@example.com"));
+    void getUserByIdReturnsPersistedUser() {
+        User saved = createUser("bob");
 
-        com.example.makeup.auth.UpdateUserRequest updates =
-                new com.example.makeup.auth.UpdateUserRequest();
-        updates.setFullName("Alice Updated");
-        updates.setAvatarUrl("http://avatar/alice.png");
-        User updated = userService.updateUser(saved.getId(), updates);
-
-        assertThat(updated.getFullName()).isEqualTo("Alice Updated");
-        assertThat(updated.getAvatarUrl()).isEqualTo("http://avatar/alice.png");
+        assertThat(userService.getUserById(saved.getId()).getUsername()).isEqualTo("bob");
     }
 
     @Test
-    void jwtRoundTripForRegisteredUser() {
-        User user = userService.register(request("alice", "alice@example.com"));
-        UserDetails details = loadUser("alice");
+    void getUserByIdThrowsForUnknownUser() {
+        assertThatThrownBy(() -> userService.getUserById(999L))
+                .isInstanceOf(NotFoundException.class);
+    }
 
-        String token = jwtService.generateToken(details);
+    @Test
+    void updateUserChangesFullNameAndAvatar() {
+        User saved = createUser("carol");
 
-        assertThat(jwtService.extractUsername(token)).isEqualTo("alice");
-        assertThat(jwtService.isTokenValid(token, details)).isTrue();
-        assertThat(user.isEnabled()).isTrue();
+        UpdateUserRequest updates = new UpdateUserRequest();
+        updates.setFullName("Carol Updated");
+        updates.setAvatarUrl("http://avatar/carol.png");
+        User updated = userService.updateUser(saved.getId(), updates);
+
+        assertThat(updated.getFullName()).isEqualTo("Carol Updated");
+        assertThat(updated.getAvatarUrl()).isEqualTo("http://avatar/carol.png");
+        assertThat(updated.getEmail()).isEqualTo("carol@example.com");
+    }
+
+    @Test
+    void updateUserKeepsEmailWhenNotProvided() {
+        User saved = createUser("dave");
+
+        UpdateUserRequest updates = new UpdateUserRequest();
+        updates.setFullName("Dave Renamed");
+        User updated = userService.updateUser(saved.getId(), updates);
+
+        assertThat(updated.getFullName()).isEqualTo("Dave Renamed");
+        assertThat(updated.getEmail()).isEqualTo("dave@example.com");
+    }
+
+    @Test
+    void updateUserRejectsEmailAlreadyTaken() {
+        User alice = createUser("alice2");
+        createUser("bob2");
+
+        UpdateUserRequest updates = new UpdateUserRequest();
+        updates.setEmail("bob2@example.com");
+
+        assertThatThrownBy(() -> userService.updateUser(alice.getId(), updates))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Email already exists");
+    }
+
+    @Test
+    void loadUserReturnsPersistedUserDetails() {
+        createUser("erin");
+
+        assertThat(loadUser("erin").getUsername()).isEqualTo("erin");
     }
 }

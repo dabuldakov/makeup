@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -22,16 +21,13 @@ class OidcUserProvisionerTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
     private OidcUserProvisioner provisioner;
 
     @BeforeEach
     void setUp() {
         OidcProperties properties =
                 new OidcProperties(true, "iss", "jwks", java.util.List.of("api-muzea"), true);
-        provisioner = new OidcUserProvisioner(userRepository, passwordEncoder, properties);
+        provisioner = new OidcUserProvisioner(userRepository, properties);
     }
 
     @Test
@@ -76,7 +72,6 @@ class OidcUserProvisionerTest {
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User result = provisioner.findOrCreate(subject, "newuser", "new@example.com");
@@ -84,7 +79,6 @@ class OidcUserProvisionerTest {
         assertThat(result.getUsername()).isEqualTo("newuser");
         assertThat(result.getEmail()).isEqualTo("new@example.com");
         assertThat(result.getAuthSubject()).isEqualTo(subject);
-        assertThat(result.getPassword()).isEqualTo("encoded");
         assertThat(result.getFullName()).isEqualTo("newuser");
         assertThat(result.isEnabled()).isTrue();
     }
@@ -97,7 +91,6 @@ class OidcUserProvisionerTest {
         when(userRepository.existsByUsername("taken")).thenReturn(true);
         when(userRepository.existsByUsername("taken_" + subject.toString().replace("-", "").substring(0, 6)))
                 .thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User result = provisioner.findOrCreate(subject, "taken", "t@example.com");
@@ -114,7 +107,6 @@ class OidcUserProvisionerTest {
                 .thenReturn(Optional.of(concurrent));
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
         User result = provisioner.findOrCreate(subject, "racer", "racer@example.com");
@@ -126,7 +118,6 @@ class OidcUserProvisionerTest {
         return User.builder()
                 .username(username)
                 .email(username + "@example.com")
-                .password("hash")
                 .fullName(username)
                 .role(Role.USER)
                 .isActive(true)

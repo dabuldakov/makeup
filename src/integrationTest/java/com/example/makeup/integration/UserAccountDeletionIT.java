@@ -52,7 +52,6 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
         return userRepository.save(User.builder()
                 .username(username)
                 .email(username + "@example.com")
-                .password(passwordEncoder.encode("password123"))
                 .fullName("Test " + username)
                 .role(com.example.makeup.auth.Role.ADMIN)
                 .isActive(true)
@@ -169,11 +168,10 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
 
     @Test
     void deleteAccountEndpointReturnsNoContent() throws Exception {
-        String token = registerUser("viahttp");
-        Long id = userRepository.findByUsername("viahttp").orElseThrow().getId();
+        User user = createUser("viahttp");
 
-        mockMvc.perform(delete("/api/users/{id}", id)
-                        .header("Authorization", "Bearer " + token))
+        mockMvc.perform(delete("/api/users/{id}", user.getId())
+                        .with(auth(user)))
                 .andExpect(status().isNoContent());
 
         assertThat(userRepository.findByUsername("viahttp")).isEmpty();
@@ -182,10 +180,10 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
     @Test
     void deleteAccountEndpointRejectsAnotherUsersAccount() throws Exception {
         User victim = createUser("victim2");
-        String token = registerUser("attacker2");
+        User attacker = createUser("attacker2");
 
         mockMvc.perform(delete("/api/users/{id}", victim.getId())
-                        .header("Authorization", "Bearer " + token))
+                        .with(auth(attacker)))
                 .andExpect(status().isForbidden());
 
         assertThat(userRepository.findById(victim.getId())).isPresent();

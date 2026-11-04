@@ -1,5 +1,6 @@
 package com.example.makeup.integration;
 
+import com.example.makeup.auth.User;
 import com.example.makeup.video.Video;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +20,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class VideoControllerIT extends AbstractIntegrationTest {
 
-    private static final String BEARER = "Bearer ";
-
     @Autowired
     private com.example.makeup.video.VideoRepository videoRepository;
 
@@ -34,13 +33,13 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void uploadVideoReturnsVideoResponse() throws Exception {
-        String token = registerUser("author1");
+        User author = createUser("author1");
 
         mockMvc.perform(multipart("/api/videos/upload")
                         .file(videoFile())
                         .param("title", "My Movie")
                         .param("description", "Great film")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.greaterThan(0)))
                 .andExpect(jsonPath("$.title").value("My Movie"))
@@ -50,26 +49,26 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void uploadVideoWithThumbnailReturnsThumbnailUrlInResponse() throws Exception {
-        String token = registerUser("thumb-author");
+        User author = createUser("thumb-author");
 
         mockMvc.perform(multipart("/api/videos/upload")
                         .file(videoFile())
                         .file(new org.springframework.mock.web.MockMultipartFile(
                                 "thumbnail", "preview.jpeg", "image/jpeg", new byte[]{9, 9, 9}))
                         .param("title", "With thumb")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.thumbnailUrl", containsString("/api/videos/thumbnail/")));
     }
 
     @Test
     void getAllVideosReturnsUploadedVideos() throws Exception {
-        String token = registerUser("author2");
-        upload(token, "Video 1");
-        upload(token, "Video 2");
+        User author = createUser("author2");
+        upload(author, "Video 1");
+        upload(author, "Video 2");
 
         mockMvc.perform(get("/api/videos")
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2));
     }
@@ -82,12 +81,12 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void getVideoIncrementsViews() throws Exception {
-        String token = registerUser("author3");
-        long id = upload(token, "Count views");
+        User author = createUser("author3");
+        long id = upload(author, "Count views");
 
-        mockMvc.perform(get("/api/videos/" + id).header("Authorization", BEARER + token))
+        mockMvc.perform(get("/api/videos/" + id).with(auth(author)))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/api/videos/" + id).header("Authorization", BEARER + token))
+        mockMvc.perform(get("/api/videos/" + id).with(auth(author)))
                 .andExpect(status().isOk());
 
         Video video = videoRepository.findById(id).orElseThrow();
@@ -96,23 +95,23 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void streamVideoReturnsFile() throws Exception {
-        String token = registerUser("author4");
-        long id = upload(token, "Stream me");
+        User author = createUser("author4");
+        long id = upload(author, "Stream me");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk());
     }
 
     @Test
     void streamVideoFullRequestAdvertisesAcceptRanges() throws Exception {
-        String token = registerUser("range-author-full");
-        long id = upload(token, "Full range");
+        User author = createUser("range-author-full");
+        long id = upload(author, "Full range");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Accept-Ranges", "bytes"))
                 .andExpect(header().longValue("Content-Length", 4))
@@ -121,12 +120,12 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void streamVideoSupportsByteRange() throws Exception {
-        String token = registerUser("range-author-1");
-        long id = upload(token, "Byte range");
+        User author = createUser("range-author-1");
+        long id = upload(author, "Byte range");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
-                        .header("Authorization", BEARER + token)
+                        .with(auth(author))
                         .header("Range", "bytes=0-1"))
                 .andExpect(status().isPartialContent())
                 .andExpect(header().string("Accept-Ranges", "bytes"))
@@ -136,12 +135,12 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void streamVideoSupportsSuffixRange() throws Exception {
-        String token = registerUser("range-author-2");
-        long id = upload(token, "Suffix range");
+        User author = createUser("range-author-2");
+        long id = upload(author, "Suffix range");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
-                        .header("Authorization", BEARER + token)
+                        .with(auth(author))
                         .header("Range", "bytes=-2"))
                 .andExpect(status().isPartialContent())
                 .andExpect(header().string("Content-Range", "bytes 2-3/4"))
@@ -150,12 +149,12 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void streamVideoOpenEndedRangeReturnsToEnd() throws Exception {
-        String token = registerUser("range-author-3");
-        long id = upload(token, "Open range");
+        User author = createUser("range-author-3");
+        long id = upload(author, "Open range");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
-                        .header("Authorization", BEARER + token)
+                        .with(auth(author))
                         .header("Range", "bytes=2-"))
                 .andExpect(status().isPartialContent())
                 .andExpect(header().string("Content-Range", "bytes 2-3/4"))
@@ -164,12 +163,12 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void streamVideoUnsatisfiableRangeReturns416() throws Exception {
-        String token = registerUser("range-author-4");
-        long id = upload(token, "Bad range");
+        User author = createUser("range-author-4");
+        long id = upload(author, "Bad range");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/stream/" + fileName)
-                        .header("Authorization", BEARER + token)
+                        .with(auth(author))
                         .header("Range", "bytes=100-200"))
                 .andExpect(status().isRequestedRangeNotSatisfiable())
                 .andExpect(header().string("Content-Range", "bytes */4"));
@@ -177,21 +176,21 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void getVideoPresignedUrlReturnsUrl() throws Exception {
-        String token = registerUser("author5");
-        long id = upload(token, "Url me");
+        User author = createUser("author5");
+        long id = upload(author, "Url me");
         String fileName = videoRepository.findById(id).orElseThrow().getObjectKey();
 
         mockMvc.perform(get("/api/videos/url/" + fileName)
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", containsString("presigned")));
     }
 
-    private long upload(String token, String title) throws Exception {
+    private long upload(User author, String title) throws Exception {
         String body = mockMvc.perform(multipart("/api/videos/upload")
                         .file(videoFile())
                         .param("title", title)
-                        .header("Authorization", BEARER + token))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).get("id").asLong();
@@ -199,15 +198,15 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void likeAndUnlikeChangeLikesCount() throws Exception {
-        String token = registerUser("liker");
-        long id = upload(token, "Like endpoint");
+        User liker = createUser("liker");
+        long id = upload(liker, "Like endpoint");
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .post("/api/videos/" + id + "/like").header("Authorization", BEARER + token))
+                        .post("/api/videos/" + id + "/like").with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.likes").value(1));
 
-        mockMvc.perform(delete("/api/videos/" + id + "/like").header("Authorization", BEARER + token))
+        mockMvc.perform(delete("/api/videos/" + id + "/like").with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.likes").value(0));
     }
@@ -220,10 +219,10 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void deleteVideoAsOwnerReturnsNoContent() throws Exception {
-        String token = registerUser("owner");
-        long id = upload(token, "Remove me");
+        User owner = createUser("owner");
+        long id = upload(owner, "Remove me");
 
-        mockMvc.perform(delete("/api/videos/" + id).header("Authorization", BEARER + token))
+        mockMvc.perform(delete("/api/videos/" + id).with(auth(owner)))
                 .andExpect(status().isNoContent());
 
         org.assertj.core.api.Assertions.assertThat(videoRepository.findById(id)).isEmpty();
@@ -231,11 +230,11 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void deleteVideoAsOtherUserReturnsForbidden() throws Exception {
-        String ownerToken = registerUser("owner2");
-        String otherToken = registerUser("other2");
-        long id = upload(ownerToken, "Not yours");
+        User owner = createUser("owner2");
+        User other = createUser("other2");
+        long id = upload(owner, "Not yours");
 
-        mockMvc.perform(delete("/api/videos/" + id).header("Authorization", BEARER + otherToken))
+        mockMvc.perform(delete("/api/videos/" + id).with(auth(other)))
                 .andExpect(status().isForbidden());
 
         org.assertj.core.api.Assertions.assertThat(videoRepository.findById(id)).isPresent();
@@ -243,9 +242,9 @@ class VideoControllerIT extends AbstractIntegrationTest {
 
     @Test
     void deleteVideoWithUnknownIdReturnsNotFound() throws Exception {
-        String token = registerUser("owner3");
+        User owner = createUser("owner3");
 
-        mockMvc.perform(delete("/api/videos/999").header("Authorization", BEARER + token))
+        mockMvc.perform(delete("/api/videos/999").with(auth(owner)))
                 .andExpect(status().isNotFound());
     }
 }

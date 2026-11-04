@@ -1,6 +1,5 @@
 package com.example.makeup.security;
 
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,29 +20,24 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
-import com.example.makeup.auth.CustomUserDetailsService;
-import com.example.makeup.auth.JwtService;
 import com.example.makeup.auth.OidcProperties;
 import com.example.makeup.auth.OidcUserProvisioner;
 import com.example.makeup.auth.User;
 
 /**
- * Аутентификация по Bearer-токену. Поддерживает два источника:
- * <ol>
- *   <li>access-токен единого IdP (auth-service, RS256) — проверяется по JWKS,
- *       пользователь находится/создаётся по claim {@code sub};</li>
- *   <li>legacy HS256-токен makeup (собственный логин/пароль) — на время миграции.</li>
- * </ol>
- * Principal в обоих случаях — пользователь, чей {@code getUsername()} равен
- * локальному {@code users.username} (как и раньше).
+ * Аутентификация по access-токену единого IdP (auth-service, RS256):
+ * токен проверяется по JWKS, пользователь находится/создаётся по claim
+ * {@code sub}. Это единственный способ аутентификации — собственный
+ * логин/пароль makeup выпилен.
+ *
+ * <p>Principal — локальный {@link User}, чей {@code getUsername()} равен
+ * {@code users.username} (как и раньше для контроллеров).
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
     private final OidcUserProvisioner oidcUserProvisioner;
     private final OidcProperties oidcProperties;
     private final ObjectProvider<JwtDecoder> oidcDecoderProvider;
@@ -57,21 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        final String jwt = authHeader.substring(7);
-
-        try {
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (!authenticateWithOidc(jwt, request)) {
-                    authenticateWithLegacyToken(jwt, request);
-                }
+        if (authHeader != null && authHeader.startsWith("Bearer ")
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                authenticateWithOidc(authHeader.substring(7), request);
+            } catch (Exception e) {
+                log.error("Cannot set user authentication: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("Cannot set user authentication: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
@@ -99,24 +85,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("Token is not a valid auth-service access token: {}", e.getMessage());
             return false;
-        }
-    }
-
-    /** Legacy HS256-токен, выданный самим makeup. */
-    private void authenticateWithLegacyToken(String token, HttpServletRequest request) {
-        Claims claims;
-        try {
-            claims = jwtService.parseClaims(token);
-        } catch (Exception e) {
-            return;
-        }
-        String username = claims.getSubject();
-
-        if (username != null && !jwtService.isTokenExpired(claims)) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            if (userDetails.getUsername().equals(username) && userDetails.isEnabled()) {
-                setAuthentication(userDetails, request);
-            }
         }
     }
 

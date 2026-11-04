@@ -6,15 +6,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,54 +20,10 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
     private CustomUserDetailsService userDetailsService;
 
     @InjectMocks
     private UserService userService;
-
-    private RegisterRequest request(String username, String email) {
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername(username);
-        request.setEmail(email);
-        request.setPassword("secret123");
-        request.setFullName("Alice Wonder");
-        return request;
-    }
-
-    @Test
-    void register_shouldEncodePasswordAndAssignDefaultRole() {
-        when(userRepository.existsByUsername("alice")).thenReturn(false);
-        when(userRepository.existsByEmail("alice@mail.com")).thenReturn(false);
-        when(passwordEncoder.encode("secret123")).thenReturn("#encoded#");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        User saved = userService.register(request("alice", "alice@mail.com"));
-
-        assertEquals("alice", saved.getUsername());
-        assertEquals("#encoded#", saved.getPassword());
-        assertEquals(Role.USER, saved.getRole());
-        assertEquals("Alice Wonder", saved.getFullName());
-    }
-
-    @Test
-    void register_shouldRejectDuplicateUsername() {
-        when(userRepository.existsByUsername("alice")).thenReturn(true);
-
-        assertThrows(RuntimeException.class, () -> userService.register(request("alice", "x@mail.com")));
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void register_shouldRejectDuplicateEmail() {
-        when(userRepository.existsByUsername("alice")).thenReturn(false);
-        when(userRepository.existsByEmail("alice@mail.com")).thenReturn(true);
-
-        assertThrows(RuntimeException.class, () -> userService.register(request("alice", "alice@mail.com")));
-        verify(userRepository, never()).save(any());
-    }
 
     @Test
     void getUserByUsername_shouldReturnUserWhenPresent() {

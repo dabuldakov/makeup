@@ -3,7 +3,6 @@ package com.example.makeup.auth;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -22,7 +21,6 @@ public class OidcUserProvisioner {
     private static final int USERNAME_MAX = 50;
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final OidcProperties properties;
 
     /**
@@ -93,7 +91,6 @@ public class OidcUserProvisioner {
         User user = User.builder()
                 .username(resolvedUsername)
                 .email(resolveEmail(email, username, subject))
-                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .fullName(resolvedUsername)
                 .role(Role.USER)
                 .isActive(true)

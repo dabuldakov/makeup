@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,22 +33,10 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleRateLimit(RateLimitExceededException ex) {
-        log.warn("Rate limit exceeded: {}", ex.getMessage());
-        return build(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
-    }
-
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDeniedException(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         return build(HttpStatus.FORBIDDEN, ex.getMessage());
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadCredentialsException ex) {
-        log.warn("Bad credentials: {}", ex.getMessage());
-        return build(HttpStatus.UNAUTHORIZED, "Invalid username or password");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
