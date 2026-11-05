@@ -46,9 +46,6 @@ public class User implements UserDetails, Serializable {
     @Column(name = "auth_subject", unique = true)
     private UUID authSubject;
 
-    @Column(unique = true, nullable = false)
-    private String email;
-
     @Column(name = "full_name", nullable = false)
     private String fullName;
 

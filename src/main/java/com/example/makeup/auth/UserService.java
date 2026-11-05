@@ -1,6 +1,5 @@
 package com.example.makeup.auth;
 
-import com.example.makeup.exception.ConflictException;
 import com.example.makeup.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,12 +32,6 @@ public class UserService {
         }
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl());
-        }
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new ConflictException("Email already exists");
-            }
-            user.setEmail(request.getEmail());
         }
 
         User updated = userRepository.save(user);

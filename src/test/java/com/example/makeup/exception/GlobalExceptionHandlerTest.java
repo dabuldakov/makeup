@@ -23,9 +23,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void runtimeMapsTo400WithSafeMessage() {
-        assertStatus(handler.handleRuntimeException(new RuntimeException("secret internals")),
+    void illegalArgumentMapsTo400WithSafeMessage() {
+        assertStatus(handler.handleIllegalArgument(new IllegalArgumentException("bad input")),
                 HttpStatus.BAD_REQUEST, "Request cannot be processed");
+    }
+
+    @Test
+    void unexpectedRuntimeExceptionIsNotMaskedAsBadRequest() {
+        assertStatus(handler.handleGenericException(new IllegalStateException("bug")),
+                HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
     }
 
     @Test

@@ -129,7 +129,6 @@ public abstract class AbstractIntegrationTest {
     protected User createUser(String username) {
         User user = User.builder()
                 .username(username)
-                .email(username + "@example.com")
                 .fullName("Test " + username)
                 .role(Role.USER)
                 .isActive(true)

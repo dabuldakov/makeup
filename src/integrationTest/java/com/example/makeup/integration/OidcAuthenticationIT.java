@@ -37,17 +37,14 @@ class OidcAuthenticationIT extends AbstractIntegrationTest {
                 .header("alg", "RS256")
                 .subject(subject.toString())
                 .claim("username", "oidc-user")
-                .claim("email", "oidc-user@example.com")
                 .build());
 
         mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer good-token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userName").value("oidc-user"))
-                .andExpect(jsonPath("$.email").value("oidc-user@example.com"));
+                .andExpect(jsonPath("$.userName").value("oidc-user"));
 
         User provisioned = userRepository.findByAuthSubject(subject).orElseThrow();
         assertThat(provisioned.getUsername()).isEqualTo("oidc-user");
-        assertThat(provisioned.getEmail()).isEqualTo("oidc-user@example.com");
     }
 
     @Test

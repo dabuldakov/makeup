@@ -45,7 +45,6 @@ class UserServiceTest {
         User existing = User.builder()
                 .id(1L)
                 .username("alice")
-                .email("alice@mail.com")
                 .build();
         UpdateUserRequest request = new UpdateUserRequest();
         request.setFullName("New Name");
@@ -59,6 +58,5 @@ class UserServiceTest {
         assertEquals("New Name", updated.getFullName());
         assertEquals("/avatars/1.jpg", updated.getAvatarUrl());
         assertEquals("alice", updated.getUsername());
-        assertEquals("alice@mail.com", updated.getEmail());
     }
 }

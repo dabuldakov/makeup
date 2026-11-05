@@ -52,9 +52,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Malformed request body");
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
-        log.error("Runtime exception: {}", ex.getMessage(), ex);
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        // Только ожидаемые ошибки входных данных; остальные RuntimeException
+        // уходят в 500, чтобы баги не маскировались под «Bad Request».
+        log.warn("Bad request: {}", ex.getMessage());
         return build(HttpStatus.BAD_REQUEST, "Request cannot be processed");
     }
 

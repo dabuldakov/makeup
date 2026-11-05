@@ -3,7 +3,6 @@ package com.example.makeup.integration;
 import com.example.makeup.auth.UpdateUserRequest;
 import com.example.makeup.auth.User;
 import com.example.makeup.auth.UserService;
-import com.example.makeup.exception.ConflictException;
 import com.example.makeup.exception.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +13,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Интеграционные тесты работы с пользователями: чтение профиля из БД,
- * обновление профиля (fullName/avatar/email) и кеш UserDetails.
+ * обновление профиля (fullName/avatar) и кеш UserDetails.
  * Собственного логина/пароля больше нет — вход только через единый IdP.
+ * Email здесь не хранится: его владелец — auth-service.
  */
 class UserServiceIT extends AbstractIntegrationTest {
 
@@ -28,7 +28,7 @@ class UserServiceIT extends AbstractIntegrationTest {
 
         User user = userService.getUserByUsername("alice");
 
-        assertThat(user.getEmail()).isEqualTo("alice@example.com");
+        assertThat(user.getUsername()).isEqualTo("alice");
     }
 
     @Test
@@ -61,32 +61,6 @@ class UserServiceIT extends AbstractIntegrationTest {
 
         assertThat(updated.getFullName()).isEqualTo("Carol Updated");
         assertThat(updated.getAvatarUrl()).isEqualTo("http://avatar/carol.png");
-        assertThat(updated.getEmail()).isEqualTo("carol@example.com");
-    }
-
-    @Test
-    void updateUserKeepsEmailWhenNotProvided() {
-        User saved = createUser("dave");
-
-        UpdateUserRequest updates = new UpdateUserRequest();
-        updates.setFullName("Dave Renamed");
-        User updated = userService.updateUser(saved.getId(), updates);
-
-        assertThat(updated.getFullName()).isEqualTo("Dave Renamed");
-        assertThat(updated.getEmail()).isEqualTo("dave@example.com");
-    }
-
-    @Test
-    void updateUserRejectsEmailAlreadyTaken() {
-        User alice = createUser("alice2");
-        createUser("bob2");
-
-        UpdateUserRequest updates = new UpdateUserRequest();
-        updates.setEmail("bob2@example.com");
-
-        assertThatThrownBy(() -> userService.updateUser(alice.getId(), updates))
-                .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("Email already exists");
     }
 
     @Test

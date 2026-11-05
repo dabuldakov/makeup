@@ -76,7 +76,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Jwt jwt = decoder.decode(token);
             UUID subject = UUID.fromString(jwt.getSubject());
             User user = oidcUserProvisioner.findOrCreate(subject,
-                    jwt.getClaimAsString("username"), jwt.getClaimAsString("email"));
+                    jwt.getClaimAsString("username"));
             if (user.isEnabled()) {
                 setAuthentication(user, request);
             }

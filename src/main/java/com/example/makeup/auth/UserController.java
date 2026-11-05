@@ -35,7 +35,6 @@ public class UserController {
         return UserResponse.builder()
                 .id(user.getId())
                 .userName(user.getUsername())
-                .email(user.getEmail())
                 .fullName(user.getFullName())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())

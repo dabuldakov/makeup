@@ -51,7 +51,6 @@ class UserAccountDeletionIT extends AbstractIntegrationTest {
     private User createAdmin(String username) {
         return userRepository.save(User.builder()
                 .username(username)
-                .email(username + "@example.com")
                 .fullName("Test " + username)
                 .role(com.example.makeup.auth.Role.ADMIN)
                 .isActive(true)

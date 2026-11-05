@@ -13,6 +13,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,9 +27,7 @@ class OidcUserProvisionerTest {
 
     @BeforeEach
     void setUp() {
-        OidcProperties properties =
-                new OidcProperties(true, "iss", "jwks", java.util.List.of("api-muzea"), true);
-        provisioner = new OidcUserProvisioner(userRepository, properties);
+        provisioner = new OidcUserProvisioner(userRepository);
     }
 
     @Test
@@ -36,48 +36,36 @@ class OidcUserProvisionerTest {
         User existing = user("existing");
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existing));
 
-        assertThat(provisioner.findOrCreate(subject, "ignored", null)).isSameAs(existing);
+        assertThat(provisioner.findOrCreate(subject, "ignored")).isSameAs(existing);
     }
 
     @Test
-    void linksExistingAccountByEmail() {
+    void doesNotLinkExistingAccountByUsername() {
         UUID subject = UUID.randomUUID();
-        User existing = user("legacy");
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(existing));
+        when(userRepository.existsByUsername("legacylogin")).thenReturn(true);
+        when(userRepository.existsByUsername(
+                "legacylogin_" + subject.toString().replace("-", "").substring(0, 6)))
+                .thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        User result = provisioner.findOrCreate(subject, "user", "user@example.com");
+        User result = provisioner.findOrCreate(subject, "legacylogin");
 
         assertThat(result.getAuthSubject()).isEqualTo(subject);
-    }
-
-    @Test
-    void linksExistingAccountByUsernameWhenEmailDiffers() {
-        UUID subject = UUID.randomUUID();
-        User existing = user("legacylogin");
-        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
-        when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
-        when(userRepository.findByUsername("legacylogin")).thenReturn(Optional.of(existing));
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        User result = provisioner.findOrCreate(subject, "legacylogin", "new@example.com");
-
-        assertThat(result.getAuthSubject()).isEqualTo(subject);
+        assertThat(result.getUsername()).startsWith("legacylogin_");
+        verify(userRepository, never()).findByUsername(anyString());
     }
 
     @Test
     void provisionsNewUserWhenUnknown() {
         UUID subject = UUID.randomUUID();
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.existsByUsername("newuser")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        User result = provisioner.findOrCreate(subject, "newuser", "new@example.com");
+        User result = provisioner.findOrCreate(subject, "newuser");
 
         assertThat(result.getUsername()).isEqualTo("newuser");
-        assertThat(result.getEmail()).isEqualTo("new@example.com");
         assertThat(result.getAuthSubject()).isEqualTo(subject);
         assertThat(result.getFullName()).isEqualTo("newuser");
         assertThat(result.isEnabled()).isTrue();
@@ -87,13 +75,12 @@ class OidcUserProvisionerTest {
     void suffixesUsernameOnCollision() {
         UUID subject = UUID.randomUUID();
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.existsByUsername("taken")).thenReturn(true);
         when(userRepository.existsByUsername("taken_" + subject.toString().replace("-", "").substring(0, 6)))
                 .thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        User result = provisioner.findOrCreate(subject, "taken", "t@example.com");
+        User result = provisioner.findOrCreate(subject, "taken");
 
         assertThat(result.getUsername()).startsWith("taken_").hasSizeLessThanOrEqualTo(50);
     }
@@ -105,11 +92,10 @@ class OidcUserProvisionerTest {
         when(userRepository.findByAuthSubject(subject))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(concurrent));
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
-        User result = provisioner.findOrCreate(subject, "racer", "racer@example.com");
+        User result = provisioner.findOrCreate(subject, "racer");
 
         assertThat(result).isSameAs(concurrent);
     }
@@ -117,7 +103,6 @@ class OidcUserProvisionerTest {
     private User user(String username) {
         return User.builder()
                 .username(username)
-                .email(username + "@example.com")
                 .fullName(username)
                 .role(Role.USER)
                 .isActive(true)
